@@ -17,9 +17,10 @@ import requests
 from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
+from .advanced_checks import AdvancedChecksMixin
 
 
-class BubbleAnalyzer(BaseAnalyzer):
+class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
     """Specialized analyzer for Bubble.io applications"""
 
     def __init__(self, session: requests.Session):
@@ -75,6 +76,12 @@ class BubbleAnalyzer(BaseAnalyzer):
         self._check_content_type_options(response)
         self._check_vulnerable_dependencies(js_content)
         self._check_robots_txt(url)
+
+        # NEW ENHANCED CHECKS - Bubble missing vulnerabilities
+        self._check_http2_support(url)
+        self._check_cookie_domain_scoping(response, url)
+        self._check_cloud_resources(js_content + "\n" + html_content)
+        self._check_secret_input_header_reflection(url)
 
         return {
             "api_endpoints": self.api_endpoints,
