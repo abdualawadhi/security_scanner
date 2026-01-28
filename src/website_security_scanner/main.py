@@ -24,12 +24,14 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
-from .analyzers.analyzers import (
+from .analyzers import (
     AirtableAnalyzer,
     BubbleAnalyzer,
     GenericWebAnalyzer,
     OutSystemsAnalyzer,
     SecurityReportGenerator,
+    get_analyzer_for_platform,
+    analyze_platform_security,
 )
 
 # Suppress SSL warnings for testing
