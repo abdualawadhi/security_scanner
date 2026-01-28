@@ -18,9 +18,10 @@ import requests
 from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
+from .advanced_checks import AdvancedChecksMixin
 
 
-class AirtableAnalyzer(BaseAnalyzer):
+class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
     """Specialized analyzer for Airtable applications"""
 
     def __init__(self, session: requests.Session):
@@ -67,6 +68,13 @@ class AirtableAnalyzer(BaseAnalyzer):
         self._check_hsts(response)
         self._check_content_type_options(response)
         self._check_vulnerable_dependencies(js_content)
+
+        # NEW ENHANCED CHECKS - Airtable-specific missing vulnerabilities
+        self._check_http2_support(url)
+        self._check_request_url_override(url)
+        self._check_cookie_domain_scoping(response, url)
+        self._check_secret_uncached_url_input(url, response)
+        self._check_dom_data_manipulation(js_content)
 
         return {
             "base_ids": self.base_ids,

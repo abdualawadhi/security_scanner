@@ -16,9 +16,10 @@ import requests
 from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
+from .advanced_checks import AdvancedChecksMixin
 
 
-class OutSystemsAnalyzer(BaseAnalyzer):
+class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
     """Specialized analyzer for OutSystems applications"""
 
     def __init__(self, session: requests.Session):
@@ -79,6 +80,13 @@ class OutSystemsAnalyzer(BaseAnalyzer):
 
         # Check for Base64 encoded data
         self._check_base64_data(url, html_content)
+
+        # NEW DETECTIONS - Enhanced coverage
+        # Check for HTTP/2 protocol support (Hidden HTTP/2)
+        self._check_http2_support(url)
+
+        # Advanced header analysis (Burp: Secret input: header)
+        self._check_secret_input_header_reflection(url)
 
         return {
             "rest_apis": self.rest_apis,

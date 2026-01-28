@@ -18,9 +18,10 @@ import requests
 from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
+from .advanced_checks import AdvancedChecksMixin
 
 
-class GenericWebAnalyzer(BaseAnalyzer):
+class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
     """Generic web application security analyzer"""
 
     def __init__(self, session: requests.Session):
@@ -66,6 +67,14 @@ class GenericWebAnalyzer(BaseAnalyzer):
         self._check_command_injection(js_content)
         self._check_file_upload(soup)
         self._check_websockets(js_content)
+
+        # Advanced Burp-aligned checks
+        self._check_http2_support(url)
+        self._check_request_url_override(url)
+        self._check_cookie_domain_scoping(response, url)
+        self._check_secret_uncached_url_input(url, response)
+        self._check_cloud_resources(js_content + "\n" + html_content)
+        self._check_secret_input_header_reflection(url)
 
         return {
             "forms": self.forms,
