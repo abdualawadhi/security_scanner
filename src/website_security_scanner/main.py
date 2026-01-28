@@ -29,10 +29,11 @@ from .analyzers import (
     BubbleAnalyzer,
     GenericWebAnalyzer,
     OutSystemsAnalyzer,
-    SecurityReportGenerator,
     get_analyzer_for_platform,
     analyze_platform_security,
 )
+from .report_generator import ProfessionalReportGenerator
+from .result_transformer import transform_results_for_professional_report
 
 # Suppress SSL warnings for testing
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")

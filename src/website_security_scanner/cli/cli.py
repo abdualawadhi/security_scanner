@@ -373,6 +373,9 @@ class SecurityScannerCLI:
         elif platform == "airtable":
             specific_findings = basic_results.get("airtable_specific", {})
 
+        # Determine scan status and error info
+        scan_failed = "error" in basic_results
+        error_info = basic_results.get("error") if scan_failed else None
         return {
             "scan_metadata": {
                 "url": basic_results.get("url", ""),
@@ -381,6 +384,8 @@ class SecurityScannerCLI:
                 "scan_type": "Comprehensive Security Assessment",
                 "status_code": basic_results.get("status_code", 0),
                 "response_time": basic_results.get("response_time", 0),
+                "scan_status": "failed" if scan_failed else "success",
+                "network_error": error_info,
             },
             "platform_analysis": {
                 "platform_type": platform,
@@ -400,7 +405,9 @@ class SecurityScannerCLI:
         }
 
     def calculate_score(self, results):
-        """Calculate security score"""
+        """Calculate security score. If the scan failed, return 'N/A'."""
+        if "error" in results:
+            return "N/A"
         score = 100
         vulns = results.get("vulnerabilities", [])
         for v in vulns:
@@ -411,8 +418,12 @@ class SecurityScannerCLI:
         return max(0, score)
 
     def determine_risk(self, results):
-        """Determine risk level"""
+        """Determine risk level. If the scan failed, return 'Unknown'."""
+        if "error" in results:
+            return "Unknown"
         score = self.calculate_score(results)
+        if isinstance(score, str):
+            return "Unknown"
         if score >= 80: return "Low"
         elif score >= 60: return "Medium"
         elif score >= 40: return "High"
@@ -443,8 +454,12 @@ class SecurityScannerCLI:
         html_path = self.report_generator.generate_report(enhanced_results, output_file)
         
         self.print_status(f"✅ Report generated: {html_path}", "success")
-        self.print_status(f"🎯 Security Score: {enhanced_results['security_assessment']['overall_score']}/100", "info")
+        score = enhanced_results['security_assessment']['overall_score']
+        score_text = f"{score}/100" if isinstance(score, int) else str(score)
+        self.print_status(f"🎯 Security Score: {score_text}", "info")
         self.print_status(f"⚠️  Risk Level: {enhanced_results['security_assessment']['risk_level']}", "info")
+        if enhanced_results.get('scan_metadata', {}).get('scan_status') == 'failed':
+            self.print_status("Scan encountered errors; results may be incomplete.", "warning")
         
         return html_path
 
@@ -650,9 +665,14 @@ Examples:
                 cli.print_status(f"Failed scans: {failed_scans}", "warning")
             cli.print_status(f"Total vulnerabilities found: {total_vulns}", "info")
 
-            if total_vulns == 0:
+            if total_vulns == 0 and failed_scans == 0:
                 cli.print_status(
-                    "🎉 No vulnerabilities found across all scans!", "success"
+                    "🎉 No vulnerabilities found across successful scans!", "success"
+                )
+            elif total_vulns == 0 and failed_scans > 0:
+                cli.print_status(
+                    "No vulnerabilities found in successful scans. Some scans failed; results may be incomplete.",
+                    "warning",
                 )
             elif total_vulns < 5:
                 cli.print_status("Overall security posture appears good", "success")

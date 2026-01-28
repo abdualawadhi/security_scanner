@@ -49,18 +49,28 @@ for vuln in results['vulnerabilities']:
 
 ## Command Line Usage
 
+All commands are run via the CLI script defined in `src/website_security_scanner/cli/cli.py`.
+
 ```bash
 # Scan a single URL
-python3 -m src.website_security_scanner.cli.cli scan https://your-app.outsystems.app
+python src/website_security_scanner/cli/cli.py --url https://your-app.outsystems.app
 
-# Generate HTML report
-python3 -m src.website_security_scanner.cli.cli scan https://your-app.outsystems.app --format html --enhanced-report
+# Scan a single URL and generate an enhanced professional HTML report
+python src/website_security_scanner/cli/cli.py \
+  --url https://your-app.outsystems.app \
+  --enhanced
 
-# Batch scan from file
-python3 -m src.website_security_scanner.cli.cli batch urls.txt --output-dir reports/
+# Batch scan from file (one URL per line)
+python src/website_security_scanner/cli/cli.py \
+  --batch urls.txt \
+  --format json \
+  --output reports/batch_scan.json
 
-# Scan with config file
-python3 -m src.website_security_scanner.cli.cli config config/config.yaml
+# Scan using a YAML configuration file
+python src/website_security_scanner/cli/cli.py \
+  --config config/config.yaml \
+  --format json \
+  --output reports/config_scan.json
 ```
 
 ## Understanding Results
@@ -131,45 +141,49 @@ Simple text output for quick review
 # .github/workflows/security-scan.yml
 - name: Security Scan
   run: |
-    python3 -m src.website_security_scanner.cli.cli scan ${{ env.APP_URL }} \
-      --format json --output security-report.json
+    python src/website_security_scanner/cli/cli.py \
+      --url "${{ env.APP_URL }}" \
+      --format json \
+      --output security-report.json
     
     # Fail if critical vulnerabilities found
-    python3 -c "
+    python - << 'PYCODE'
     import json
-    with open('security-report.json') as f:
+    with open('security-report.json', encoding='utf-8') as f:
         data = json.load(f)
-        critical = [v for v in data['vulnerabilities'] if v['severity'] == 'Critical']
-        if critical:
-            print(f'Found {len(critical)} critical vulnerabilities!')
-            exit(1)
-    "
+    vulns = data.get('vulnerabilities', [])
+    critical = [v for v in vulns if v.get('severity') == 'Critical']
+    if critical:
+        print(f"Found {len(critical)} critical vulnerabilities!")
+        raise SystemExit(1)
+    PYCODE
 ```
 
 ### Python Script
 ```python
-from src.website_security_scanner.main import LowCodeSecurityScanner
+from website_security_scanner.main import LowCodeSecurityScanner
 
-def check_security(url):
+
+def check_security(url: str) -> bool:
     scanner = LowCodeSecurityScanner()
-    results = scanner.scan_url(url)
-    
-    # Get critical issues
-    critical = [v for v in results['vulnerabilities'] 
-                if v['severity'] == 'Critical']
-    
+    results = scanner.scan_target(url)
+
+    vulns = results.get("vulnerabilities", [])
+    critical = [v for v in vulns if v.get("severity") == "Critical"]
+
     if critical:
-        print(f"⚠️  Found {len(critical)} critical issues!")
+        print(f"Found {len(critical)} critical issues!")
         for vuln in critical:
-            print(f"   - {vuln['type']}: {vuln['description']}")
+            print(f"  - {vuln.get('type') or vuln.get('title')}: {vuln.get('description', '')}")
         return False
-    
-    print("✓ No critical issues found")
+
+    print("No critical issues found")
     return True
 
-# Use it
-if not check_security("https://your-app.outsystems.app"):
-    exit(1)
+
+if __name__ == "__main__":
+    if not check_security("https://your-app.outsystems.app"):
+        raise SystemExit(1)
 ```
 
 ## Common Use Cases
