@@ -28,6 +28,10 @@ import requests
 import yaml
 from colorama import Back, Fore, Style, init
 
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from result_transformer import transform_results_for_professional_report
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 # Initialize colorama for cross-platform colored output
@@ -444,7 +448,9 @@ class SecurityScannerCLI:
     def generate_enhanced_report(self, results, output_file):
         """Generate enhanced professional HTML report"""
         self.print_status("📊 Enhancing results...", "info")
-        enhanced_results = self.enhance_scan_results(results)
+        
+        # Transform results using the professional transformer
+        enhanced_results = transform_results_for_professional_report(results)
 
         # Ensure directory exists
         output_path = Path(output_file)

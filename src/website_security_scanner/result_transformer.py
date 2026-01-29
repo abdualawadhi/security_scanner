@@ -3,6 +3,24 @@ Transforms raw scan results into a structured format for professional reporting.
 """
 
 from datetime import datetime
+from urllib.parse import urlparse
+
+
+def calculate_risk_level(vulnerabilities):
+    """Calculate risk level based on vulnerability counts"""
+    critical = sum(1 for v in vulnerabilities if v['severity'].lower() == 'critical')
+    high = sum(1 for v in vulnerabilities if v['severity'].lower() == 'high')
+    medium = sum(1 for v in vulnerabilities if v['severity'].lower() == 'medium')
+    
+    if critical > 0 or high > 10:
+        return "Critical"
+    elif high > 5 or medium > 10:
+        return "High"
+    elif medium > 3 or high > 0:
+        return "Medium"
+    else:
+        return "Low"
+
 
 def transform_results_for_professional_report(raw_results):
     """
@@ -18,22 +36,35 @@ def transform_results_for_professional_report(raw_results):
     
     # Map raw vulnerabilities to the detailed format
     vulnerabilities = []
+    base_url = raw_results.get('url')
+    parsed = urlparse(base_url) if base_url else None
+
     for vuln in raw_results.get('vulnerabilities', []):
+        # Prefer analyzer-provided instances; otherwise build a single instance
+        instances = vuln.get("instances")
+        if not instances:
+            instances = [{
+                "url": base_url,
+                "request": vuln.get("request"),
+                "response": vuln.get("response"),
+                "evidence": vuln.get("evidence", []),
+            }]
+
         vulnerabilities.append({
             "title": vuln.get("type", "Unnamed Vulnerability"),
             "severity": vuln.get("severity", "info"),
             "confidence": vuln.get("confidence", "tentative"),
             "description": vuln.get("description", "No details available."),
-            "host": raw_results.get('url'),
-            "path": urlparse(raw_results.get('url')).path,
+            # New enriched fields for background, impact and external references
+            "background": vuln.get("background"),
+            "impact": vuln.get("impact"),
+            "references": vuln.get("references", []),
+            # Normalized host/path for better reporting
+            "host": parsed.hostname if parsed else base_url,
+            "path": parsed.path if parsed else "/",
             "cwe": vuln.get('cwe', []),
             "capec": vuln.get('capec', []),
-            "instances": [{
-                "url": raw_results.get('url'),
-                "request": vuln.get('request'),
-                "response": vuln.get('response'),
-                "evidence": vuln.get('evidence', [])
-            }]
+            "instances": instances,
         })
 
     # Basic transformation for security headers
@@ -77,6 +108,8 @@ def transform_results_for_professional_report(raw_results):
                 "recommendations": raw_results.get("recommendations", []),
             },
             "ssl_tls_analysis": raw_results.get("ssl_analysis", {}),
+            "overall_score": raw_results.get("security_score", 100),
+            "risk_level": calculate_risk_level(vulnerabilities),
             # Add other assessment areas if needed
         },
     }

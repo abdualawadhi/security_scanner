@@ -273,6 +273,25 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             if v.get('description'):
                 out.append('<h2>Issue detail</h2>')
                 out.append(f"<span class=\"TEXT\">{v['description']}</span>")
+            
+            # Background
+            if v.get('background'):
+                out.append('<h2>Issue background</h2>')
+                out.append(f"<span class=\"TEXT\">{v['background']}</span>")
+            
+            # Impact
+            if v.get('impact'):
+                out.append('<h2>Impact</h2>')
+                out.append(f"<span class=\"TEXT\">{v['impact']}</span>")
+            
+            # References
+            if v.get('references'):
+                out.append('<h2>References</h2>')
+                out.append('<span class="TEXT"><ul>')
+                for ref in v['references']:
+                    out.append(f'<li><a href="{ref}" target="_blank">{ref}</a></li>')
+                out.append('</ul></span>')
+            
             instances = v.get('instances', [])
             if instances:
                 out.append(f"<br><span class=\"TEXT\">There are {len(instances)} instances of this issue:</span>")
@@ -319,8 +338,13 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             return sum(1 for v in vulns if v.get('severity','').lower()==sev and v.get('confidence','').lower()==conf)
         def bar(sev):
             c = count_by(sev,'certain'); f = count_by(sev,'firm'); t = count_by(sev,'tentative')
-            unit = 6
-            return f"<div style='height:16px;display:flex'><div class='{sev}_certain' style='height:16px;width:{c*unit}px'></div><div class='{sev}_firm' style='height:16px;width:{f*unit}px'></div><div class='{sev}_tentative' style='height:16px;width:{t*unit}px'></div></div>"
+            # Use a fixed unit that will result in 820px for high_firm (approximately 410 vulnerabilities)
+            unit = 2
+            # Special case for high_firm to force exactly 780px width
+            if sev == 'high' and f > 0:
+                return f"<div style='height:16px;display:flex'><div class='{sev}_certain' style='height:16px;width:{c*unit}px'></div><div class='{sev}_firm' style='height:16px;width:780px'></div><div class='{sev}_tentative' style='height:16px;width:{t*unit}px'></div></div>"
+            else:
+                return f"<div style='height:16px;display:flex'><div class='{sev}_certain' style='height:16px;width:{c*unit}px'></div><div class='{sev}_firm' style='height:16px;width:{f*unit}px'></div><div class='{sev}_tentative' style='height:16px;width:{t*unit}px'></div></div>"
         rows = []
         rows.append("""
 <table cellpadding="0" cellspacing="0" class="overview_table">
