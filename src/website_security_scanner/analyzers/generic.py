@@ -19,6 +19,7 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from ..utils.evidence_builder import EvidenceBuilder
 
 
 class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
@@ -61,6 +62,9 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         # Record HTTP context for enriched vulnerability reporting
         self._record_http_context(url, response)
 
+        # Record HTTP context for use in enriched vulnerabilities
+        self._record_http_context(url, response)
+
         js_content = self._extract_javascript(soup)
         html_content = str(soup)
 
@@ -98,6 +102,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self._check_request_url_override(url)
         self._check_cookie_domain_scoping(response, url)
         self._check_secret_uncached_url_input(url, response)
+        self._check_dom_data_manipulation(js_content)
         self._check_cloud_resources(js_content + "\n" + html_content)
         self._check_secret_input_header_reflection(url)
 
@@ -151,11 +156,15 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         # Check for CSRF protection
         csrf_input = form.find("input", {"name": re.compile(r"csrf", re.IGNORECASE)})
         if not csrf_input:
-            self.add_vulnerability(
+            csrf_evidence = EvidenceBuilder.exact_match(
+                f"Form action: {form_info['action']}",
+                "Form without CSRF protection"
+            )
+            self.add_enriched_vulnerability(
                 "Missing CSRF Protection",
                 "Medium",
                 "Form lacks CSRF protection",
-                f"Form action: {form_info['action']}",
+                csrf_evidence,
                 "Implement CSRF tokens for all forms",
                 category="Cross-Site Scripting",
                 owasp="A03:2021 - Injection",
@@ -167,11 +176,15 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         for field in form_info["fields"]:
             if any(sensitive in field["name"].lower() for sensitive in sensitive_fields):
                 if form_info["method"].upper() == "GET":
-                    self.add_vulnerability(
+                    sensitive_evidence = EvidenceBuilder.exact_match(
+                        field["name"],
+                        f"Sensitive field in GET form: {field['name']}"
+                    )
+                    self.add_enriched_vulnerability(
                         "Sensitive Data in GET Form",
                         "Medium",
                         f"Sensitive field '{field['name']}' in GET form",
-                        field["name"],
+                        sensitive_evidence,
                         "Use POST method for forms with sensitive data",
                         category="Data Exposure",
                         owasp="A02:2021 - Cryptographic Failures",
@@ -188,7 +201,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             
             # Check for suspicious links
             if href.startswith(("javascript:", "data:")):
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Suspicious Link Protocol",
                     "Low",
                     f"Suspicious link protocol: {href[:20]}",
@@ -216,7 +229,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     
                     # Check for sensitive endpoints
                     if any(sensitive in match.lower() for sensitive in ["admin", "api", "config", "debug", "test"]):
-                        self.add_vulnerability(
+                        self.add_enriched_vulnerability(
                             "Potentially Sensitive Endpoint",
                             "Low",
                             f"Potentially sensitive endpoint: {match}",
@@ -230,11 +243,15 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
     def _check_session_tokens_in_url(self, url: str):
         """Check for session tokens in URL"""
         if re.search(r'[?&](session|token|sid)=', url, re.IGNORECASE):
-            self.add_vulnerability(
+            session_evidence = EvidenceBuilder.url_parameter(
+                "session|token|sid",
+                "Session token found in URL parameters"
+            )
+            self.add_enriched_vulnerability(
                 "Session Token in URL",
                 "Medium",
                 "Session token found in URL",
-                url,
+                session_evidence,
                 "Use secure cookies for session management",
                 category="Session Management",
                 owasp="A07:2021 - Identification and Authentication Failures",
@@ -254,7 +271,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             matches = re.findall(pattern, js_content, re.IGNORECASE)
             for match in matches:
                 if len(match) > 10 and not match.startswith(("http", "data", "mail")):  # Avoid false positives
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Potential Secret in JavaScript",
                         "High",
                         f"Potential secret found: {match[:10]}...",
@@ -269,7 +286,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check cookie security headers"""
         cookies = response.headers.get("Set-Cookie", "")
         if "Secure" not in cookies:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Insecure Cookie",
                 "Medium",
                 "Cookie lacks Secure flag",
@@ -281,7 +298,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             )
         
         if "HttpOnly" not in cookies:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Cookie Missing HttpOnly",
                 "Low",
                 "Cookie lacks HttpOnly flag",
@@ -296,7 +313,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check Content Security Policy"""
         csp = response.headers.get("Content-Security-Policy", "")
         if not csp:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing Content Security Policy",
                 "Low",
                 "No CSP header found",
@@ -311,7 +328,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check for clickjacking protection"""
         xfo = response.headers.get("X-Frame-Options", "")
         if not xfo:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing Clickjacking Protection",
                 "Low",
                 "No X-Frame-Options header",
@@ -333,7 +350,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
         for pattern in error_patterns:
             if re.search(pattern, js_content + html_content, re.IGNORECASE):
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Information Disclosure",
                     "Low",
                     "Potential error information exposed",
@@ -353,7 +370,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         for param, values in params.items():
             for value in values:
                 if value in html_content:
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Reflected Input (Potential XSS)",
                         "Medium",
                         f"Input parameter '{param}' is reflected in response",
@@ -368,7 +385,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check for cacheable HTTPS responses"""
         cache_control = response.headers.get("Cache-Control", "")
         if "no-store" not in cache_control and url.startswith("https://"):
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Cacheable HTTPS Response",
                 "Low",
                 "HTTPS response may be cached",
@@ -391,7 +408,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             matches = re.findall(pattern, js_content, re.IGNORECASE)
             for match in matches:
                 if "http" in match and not match.startswith(("http://", "https://")):
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Open Redirection",
                         "Medium",
                         f"Potential open redirection: {match}",
@@ -414,7 +431,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             if re.search(pattern, js_content, re.IGNORECASE):
                 # Check for proper headers
                 if "X-Requested-With" not in js_content:
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Missing AJAX Security Headers",
                         "Low",
                         "AJAX requests may lack security headers",
@@ -438,7 +455,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             for match in matches:
                 # Check for sensitive endpoints
                 if any(sensitive in match.lower() for sensitive in ["admin", "api", "config", "debug"]):
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Exposed Sensitive Endpoint",
                         "Low",
                         f"Potentially sensitive endpoint: {match}",
@@ -453,7 +470,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check HSTS implementation"""
         hsts = response.headers.get("Strict-Transport-Security", "")
         if not hsts:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing HSTS Header",
                 "Low",
                 "No HSTS header found",
@@ -468,7 +485,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check X-Content-Type-Options"""
         xcto = response.headers.get("X-Content-Type-Options", "")
         if xcto != "nosniff":
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing X-Content-Type-Options",
                 "Low",
                 "X-Content-Type-Options header missing or incorrect",
@@ -493,7 +510,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             for version in matches:
                 # This is a simplified check - in practice, you'd use a vulnerability database
                 if version.startswith(("1.", "2.", "3.", "4.")):  # Older versions
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Potentially Vulnerable Dependency",
                         "Low",
                         f"Old library version detected: {version}",
@@ -514,7 +531,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 content = response.text
                 # Look for sensitive entries
                 if any(sensitive in content.lower() for sensitive in ["admin", "private", "secret", "debug"]):
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Sensitive Information in robots.txt",
                         "Low",
                         "robots.txt contains sensitive information",
@@ -531,7 +548,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check for directory traversal vulnerabilities"""
         # Simple check for path parameters that might be vulnerable
         if re.search(r'[?&](path|dir|file|folder)=', url, re.IGNORECASE):
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Potential Directory Traversal",
                 "Medium",
                 "URL contains path parameter that might be vulnerable",
@@ -555,7 +572,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         content = js_content + html_content
         for pattern in sql_patterns:
             if re.search(pattern, content, re.IGNORECASE):
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Potential SQL Injection Point",
                     "High",
                     "SQL keywords found in client-side code",
@@ -578,7 +595,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
         for pattern in cmd_patterns:
             if re.search(pattern, js_content, re.IGNORECASE):
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Potential Command Injection",
                     "Critical",
                     "Command execution function found",
@@ -600,7 +617,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             accept_attr = file_input.get("accept", "")
             
             if not accept_attr:
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Unrestricted File Upload",
                     "High",
                     "File upload without type restrictions",
@@ -623,7 +640,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             if re.search(pattern, js_content, re.IGNORECASE):
                 # Check if using secure WebSocket
                 if "ws://" in js_content and "wss://" not in js_content:
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Insecure WebSocket Connection",
                         "Medium",
                         "Using unsecure WebSocket (ws://) instead of secure (wss://)",

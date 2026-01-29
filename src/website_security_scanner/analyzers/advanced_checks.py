@@ -18,7 +18,7 @@ class AdvancedChecksMixin:
 
     Assumes the concrete analyzer provides:
     - self.session: requests.Session
-    - self.add_vulnerability(...)
+    - self.add_enriched_vulnerability(...)
     """
 
     def _get_set_cookie_headers(self, response: requests.Response) -> List[str]:
@@ -57,7 +57,7 @@ class AdvancedChecksMixin:
                     negotiated = ssock.selected_alpn_protocol()
 
             if negotiated == "h2":
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Hidden HTTP/2",
                     "Info",
                     "Origin advertises HTTP/2 (h2) via ALPN; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
@@ -105,7 +105,7 @@ class AdvancedChecksMixin:
 
                     # Flag if direct is clearly missing, but override changes outcome
                     if direct.status_code in {400, 404} and overridden.status_code not in {400, 404}:
-                        self.add_vulnerability(
+                        self.add_enriched_vulnerability(
                             "Request URL Override",
                             "Medium",
                             "Server appears to honor URL override headers, which can lead to access-control bypass in some proxy/app configurations.",
@@ -137,7 +137,7 @@ class AdvancedChecksMixin:
 
             # Very broad or invalid domain attributes
             if "." not in domain_attr or domain_attr in {"com", "net", "org", "io"}:
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Cookie Domain Scoping Issue",
                     "Medium",
                     "Cookie Domain attribute appears overly broad or invalid.",
@@ -154,7 +154,7 @@ class AdvancedChecksMixin:
 
             if host_l.endswith("." + domain_attr):
                 # Cookie is scoped to a parent domain
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Cookie Scoped to Parent Domain",
                     "Low",
                     "Cookie is scoped to a parent domain, which can expand the attack surface across subdomains.",
@@ -166,7 +166,7 @@ class AdvancedChecksMixin:
                 )
             else:
                 # Domain attribute not related to host
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Cookie Domain Attribute Mismatch",
                     "Medium",
                     "Cookie Domain attribute does not match the request host; this may indicate misconfiguration.",
@@ -219,7 +219,7 @@ class AdvancedChecksMixin:
             severity = "High"
 
         evidence = "; ".join(findings[:8])
-        self.add_vulnerability(
+        self.add_enriched_vulnerability(
             "Cloud Resource / AWS Key Exposure",
             severity,
             "Potential cloud resource identifiers or AWS credentials found in client-accessible content.",
@@ -274,7 +274,7 @@ class AdvancedChecksMixin:
         is_cacheable = "no-store" not in cache_control.lower() and "no-cache" not in cache_control.lower() and "private" not in cache_control.lower() and "no-cache" not in pragma.lower()
 
         if is_cacheable:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Secret Uncached Input: URL",
                 "Medium",
                 "Sensitive-looking URL parameters observed on a potentially cacheable response.",
@@ -307,7 +307,7 @@ class AdvancedChecksMixin:
 
         if reflected_in_headers or reflected_in_body:
             location = "headers" if reflected_in_headers else "body"
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Secret Input Reflected in Response (Header)",
                 "High",
                 f"A secret-like request header value was reflected in the response {location}.",
@@ -342,7 +342,7 @@ class AdvancedChecksMixin:
         sink_hits = [s for s in sinks if re.search(s, js_content, re.IGNORECASE)]
 
         if src_hits and sink_hits:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "DOM Data Manipulation (DOM-based)",
                 "Medium",
                 "Client-side code contains DOM sources and dangerous sinks which may indicate DOM-based XSS/data manipulation risk.",

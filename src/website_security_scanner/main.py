@@ -190,6 +190,9 @@ class LowCodeSecurityScanner:
         analyzer = BubbleAnalyzer(self.session)
         results = analyzer.analyze(url, response, soup)
 
+        # Perform active verification of found vulnerabilities
+        analyzer.verify_vulnerabilities(url)
+
         # Map BubbleAnalyzer findings to the format expected by scanner
         return {
             "bubble_specific": {
@@ -208,6 +211,9 @@ class LowCodeSecurityScanner:
         analyzer = OutSystemsAnalyzer(self.session)
         results = analyzer.analyze(url, response, soup)
 
+        # Perform active verification of found vulnerabilities
+        analyzer.verify_vulnerabilities(url)
+
         return {
             "outsystems_specific": {
                 "rest_apis_found": results.get("rest_apis", []),
@@ -224,6 +230,9 @@ class LowCodeSecurityScanner:
         analyzer = AirtableAnalyzer(self.session)
         results = analyzer.analyze(url, response, soup)
 
+        # Perform active verification of found vulnerabilities
+        analyzer.verify_vulnerabilities(url)
+
         return {
             "airtable_specific": {
                 "base_id_exposure": results.get("base_ids", []),
@@ -239,6 +248,9 @@ class LowCodeSecurityScanner:
         soup = BeautifulSoup(response.content, "html.parser")
         analyzer = GenericWebAnalyzer(self.session)
         results = analyzer.analyze(url, response, soup)
+
+        # Perform active verification of found vulnerabilities
+        analyzer.verify_vulnerabilities(url)
 
         return {
             "generic_analysis": results.get("generic_findings", {}),

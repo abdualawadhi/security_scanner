@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from ..utils.evidence_builder import EvidenceBuilder
 
 
 class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
@@ -58,6 +59,9 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """
         
         # Record HTTP context for enriched vulnerability reporting
+        self._record_http_context(url, response)
+
+        # Record HTTP context for use in enriched vulnerabilities
         self._record_http_context(url, response)
 
         # Extract JavaScript content for analysis
@@ -104,7 +108,10 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
         # NEW ENHANCED CHECKS - Bubble missing vulnerabilities
         self._check_http2_support(url)
+        self._check_request_url_override(url)
         self._check_cookie_domain_scoping(response, url)
+        self._check_secret_uncached_url_input(url, response)
+        self._check_dom_data_manipulation(js_content)
         self._check_cloud_resources(js_content + "\n" + html_content)
         self._check_secret_input_header_reflection(url)
 
@@ -155,11 +162,15 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 
                 # Check for sensitive API names
                 if any(sensitive in match.lower() for sensitive in ["admin", "delete", "user", "private"]):
-                    self.add_vulnerability(
+                    api_evidence = EvidenceBuilder.regex_pattern(
+                        rf"(?i){re.escape(match)}",
+                        f"Sensitive API endpoint: {match}"
+                    )
+                    self.add_enriched_vulnerability(
                         "Sensitive Bubble API Endpoint",
                         "High",
                         f"Sensitive API endpoint exposed: {match}",
-                        match,
+                        api_evidence,
                         "Review API permissions and implement proper access controls",
                         category="API Security",
                         owasp="A01:2021 - Broken Access Control",
@@ -182,11 +193,15 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
                 # Check for sensitive workflow names
                 if any(sensitive in match.lower() for sensitive in ["delete", "admin", "payment", "email"]):
-                    self.add_vulnerability(
+                    workflow_evidence = EvidenceBuilder.regex_pattern(
+                        rf"(?i){re.escape(match)}",
+                        f"Sensitive workflow pattern: {match}"
+                    )
+                    self.add_enriched_vulnerability(
                         "Sensitive Workflow Exposure",
                         "Medium",
                         f"Sensitive workflow exposed: {match}",
-                        match,
+                        workflow_evidence,
                         "Implement proper privacy rules for sensitive workflows",
                         category="Business Logic",
                         owasp="A01:2021 - Broken Access Control",
@@ -209,7 +224,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
                 # Check for sensitive field names
                 if any(sensitive in match.lower() for sensitive in ["password", "email", "phone", "address"]):
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Database Schema Exposure",
                         "Medium",
                         f"Sensitive database field exposed: {match}",
@@ -237,11 +252,15 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 break
 
         if not privacy_found:
-            self.add_vulnerability(
+            privacy_evidence = EvidenceBuilder.exact_match(
+                "Privacy rule patterns not found in JavaScript",
+                "Missing privacy rules implementation"
+            )
+            self.add_enriched_vulnerability(
                 "Missing Privacy Rules",
                 "High",
                 "No privacy rules implementation detected",
-                "No privacy patterns found in JavaScript",
+                privacy_evidence,
                 "Implement comprehensive privacy rules for all data access",
                 category="Access Control",
                 owasp="A01:2021 - Broken Access Control",
@@ -263,7 +282,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         auth_found = any(re.search(indicator, js_content, re.IGNORECASE) for indicator in auth_indicators)
 
         if not auth_found:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Authentication Issues",
                 "High",
                 "No clear authentication implementation found",
@@ -287,7 +306,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         for pattern in sensitive_patterns:
             matches = re.findall(pattern, js_content)
             for match in matches:
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Client-side Data Exposure",
                     "High",
                     f"Sensitive data exposed in client-side code: {match[:10]}...",
@@ -306,7 +325,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             # Check for CSRF protection
             csrf_input = form.find("input", {"name": re.compile(r"csrf", re.IGNORECASE)})
             if not csrf_input:
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Missing CSRF Protection",
                     "Medium",
                     "Form lacks CSRF protection",
@@ -321,7 +340,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
     def _check_session_tokens_in_url(self, url: str):
         """Check for session tokens in URL"""
         if re.search(r'[?&](session|token|sid)=', url, re.IGNORECASE):
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Session Token in URL",
                 "Medium",
                 "Session token found in URL",
@@ -344,7 +363,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             matches = re.findall(pattern, js_content, re.IGNORECASE)
             for match in matches:
                 if len(match) > 10:  # Avoid false positives
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Potential Secret in JavaScript",
                         "High",
                         f"Potential secret found in JavaScript: {match[:10]}...",
@@ -359,7 +378,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check cookie security headers"""
         cookies = response.headers.get("Set-Cookie", "")
         if "Secure" not in cookies:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Insecure Cookie",
                 "Medium",
                 "Cookie lacks Secure flag",
@@ -374,7 +393,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check Content Security Policy"""
         csp = response.headers.get("Content-Security-Policy", "")
         if not csp:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing Content Security Policy",
                 "Low",
                 "No CSP header found",
@@ -389,7 +408,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check for clickjacking protection"""
         xfo = response.headers.get("X-Frame-Options", "")
         if not xfo:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing Clickjacking Protection",
                 "Low",
                 "No X-Frame-Options header",
@@ -411,7 +430,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
         for pattern in error_patterns:
             if re.search(pattern, js_content + html_content, re.IGNORECASE):
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Information Disclosure",
                     "Low",
                     "Potential error information exposed",
@@ -433,7 +452,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         for param, values in params.items():
             for value in values:
                 if value in html_content:
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Reflected Input (Potential XSS)",
                         "Medium",
                         f"Input parameter '{param}' is reflected in response",
@@ -448,7 +467,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check for cacheable HTTPS responses"""
         cache_control = response.headers.get("Cache-Control", "")
         if "no-store" not in cache_control and url.startswith("https://"):
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Cacheable HTTPS Response",
                 "Low",
                 "HTTPS response may be cached",
@@ -471,7 +490,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             matches = re.findall(pattern, js_content, re.IGNORECASE)
             for match in matches:
                 if "http" in match and not match.startswith(("http://", "https://")):
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Open Redirection",
                         "Medium",
                         f"Potential open redirection: {match}",
@@ -494,7 +513,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             if re.search(pattern, js_content, re.IGNORECASE):
                 # Check for proper headers
                 if "X-Requested-With" not in js_content:
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Missing AJAX Security Headers",
                         "Low",
                         "AJAX requests may lack security headers",
@@ -518,7 +537,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             for match in matches:
                 # Check for sensitive endpoints
                 if any(sensitive in match.lower() for sensitive in ["admin", "api", "config", "debug"]):
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Exposed Sensitive Endpoint",
                         "Low",
                         f"Potentially sensitive endpoint exposed: {match}",
@@ -533,7 +552,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check HSTS implementation"""
         hsts = response.headers.get("Strict-Transport-Security", "")
         if not hsts:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing HSTS Header",
                 "Low",
                 "No HSTS header found",
@@ -548,7 +567,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check X-Content-Type-Options"""
         xcto = response.headers.get("X-Content-Type-Options", "")
         if xcto != "nosniff":
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing X-Content-Type-Options",
                 "Low",
                 "X-Content-Type-Options header missing or incorrect",
@@ -572,7 +591,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             for version in matches:
                 # This is a simplified check - in practice, you'd use a vulnerability database
                 if version.startswith(("1.", "2.", "3.")):  # Older versions
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Potentially Vulnerable Dependency",
                         "Low",
                         f"Old library version detected: {version}",
@@ -593,7 +612,7 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 content = response.text
                 # Look for sensitive entries
                 if any(sensitive in content.lower() for sensitive in ["admin", "private", "secret"]):
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Sensitive Information in robots.txt",
                         "Low",
                         "robots.txt contains sensitive information",

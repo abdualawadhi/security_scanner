@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from ..utils.evidence_builder import EvidenceBuilder
 
 
 class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
@@ -56,6 +57,9 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """
         
         # Record HTTP context for enriched vulnerability reporting
+        self._record_http_context(url, response)
+
+        # Record HTTP context for use in enriched vulnerabilities
         self._record_http_context(url, response)
 
         js_content = self._extract_javascript(soup)
@@ -110,6 +114,21 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         # Check for HTTP/2 protocol support (Hidden HTTP/2)
         self._check_http2_support(url)
 
+        # Check for request URL override
+        self._check_request_url_override(url)
+
+        # Check cookie domain scoping
+        self._check_cookie_domain_scoping(response, url)
+
+        # Check for cloud resource exposure
+        self._check_cloud_resources(js_content)
+
+        # Check for secret uncached URL input
+        self._check_secret_uncached_url_input(url, response)
+
+        # Check for DOM data manipulation
+        self._check_dom_data_manipulation(js_content)
+
         # Advanced header analysis (Burp: Secret input: header)
         self._check_secret_input_header_reflection(url)
 
@@ -150,11 +169,15 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     sensitive in match.lower()
                     for sensitive in ["admin", "internal", "private", "secret"]
                 ):
-                    self.add_vulnerability(
+                    api_evidence = EvidenceBuilder.regex_pattern(
+                        rf"(?i){re.escape(match)}",
+                        f"Sensitive REST API endpoint: {match}"
+                    )
+                    self.add_enriched_vulnerability(
                         "Sensitive REST API Exposure",
                         "High",
                         f"Potentially sensitive REST API exposed: {match}",
-                        match,
+                        api_evidence,
                         "Review API permissions and authentication requirements",
                         category="API Security",
                         owasp="A01:2021 - Broken Access Control",
@@ -180,11 +203,15 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     priv in match.lower()
                     for priv in ["delete", "admin", "elevate", "privilege"]
                 ):
-                    self.add_vulnerability(
+                    action_evidence = EvidenceBuilder.regex_pattern(
+                        rf"(?i){re.escape(match)}",
+                        f"Privileged screen action: {match}"
+                    )
+                    self.add_enriched_vulnerability(
                         "Privileged Action Exposure",
                         "Medium",
                         f"Privileged screen action found: {match}",
-                        match,
+                        action_evidence,
                         "Ensure proper authorization checks for privileged actions",
                         category="Business Logic",
                         owasp="A01:2021 - Broken Access Control",
@@ -210,7 +237,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     sensitive in match.lower()
                     for sensitive in ["user", "account", "payment", "personal"]
                 ):
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Sensitive Entity Exposure",
                         "Medium",
                         f"Sensitive entity structure exposed: {match}",
@@ -238,11 +265,15 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 break
 
         if not session_found:
-            self.add_vulnerability(
+            session_evidence = EvidenceBuilder.exact_match(
+                "Session management patterns not found in JavaScript",
+                "Missing session management implementation"
+            )
+            self.add_enriched_vulnerability(
                 "Session Management Issues",
                 "Medium",
                 "No clear session management implementation found",
-                "No session patterns detected",
+                session_evidence,
                 "Implement secure session management with proper timeout and validation",
                 category="Session Management",
                 owasp="A07:2021 - Identification and Authentication Failures",
@@ -264,7 +295,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             roles_found += len(matches)
 
         if roles_found == 0:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing Role-Based Access Control",
                 "High",
                 "No role-based access control implementation detected",
@@ -278,7 +309,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
     def _check_session_tokens_in_url(self, url: str):
         """Check for session tokens in URL"""
         if re.search(r'[?&](session|token|sid)=', url, re.IGNORECASE):
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Session Token in URL",
                 "Medium",
                 "Session token found in URL",
@@ -301,7 +332,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             matches = re.findall(pattern, js_content, re.IGNORECASE)
             for match in matches:
                 if len(match) > 10:  # Avoid false positives
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Potential Secret in JavaScript",
                         "High",
                         f"Potential secret found in JavaScript: {match[:10]}...",
@@ -316,7 +347,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check cookie security headers"""
         cookies = response.headers.get("Set-Cookie", "")
         if "Secure" not in cookies:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Insecure Cookie",
                 "Medium",
                 "Cookie lacks Secure flag",
@@ -331,7 +362,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check Content Security Policy"""
         csp = response.headers.get("Content-Security-Policy", "")
         if not csp:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing Content Security Policy",
                 "Low",
                 "No CSP header found",
@@ -346,7 +377,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check for clickjacking protection"""
         xfo = response.headers.get("X-Frame-Options", "")
         if not xfo:
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing Clickjacking Protection",
                 "Low",
                 "No X-Frame-Options header",
@@ -367,7 +398,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
         for pattern in error_patterns:
             if re.search(pattern, js_content + html_content, re.IGNORECASE):
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Information Disclosure",
                     "Low",
                     "Potential error information exposed",
@@ -388,7 +419,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         for param, values in params.items():
             for value in values:
                 if value in html_content:
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Reflected Input (Potential XSS)",
                         "Medium",
                         f"Input parameter '{param}' is reflected in response",
@@ -405,7 +436,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         for link in link_tags:
             href = link.get("href", "")
             if href.startswith("/") and not href.startswith("//"):
-                self.add_vulnerability(
+                self.add_enriched_vulnerability(
                     "Path-Relative Stylesheet Import",
                     "Low",
                     f"Path-relative stylesheet: {href}",
@@ -420,7 +451,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check for cacheable HTTPS responses"""
         cache_control = response.headers.get("Cache-Control", "")
         if "no-store" not in cache_control and url.startswith("https://"):
-            self.add_vulnerability(
+            self.add_enriched_vulnerability(
                 "Cacheable HTTPS Response",
                 "Low",
                 "HTTPS response may be cached",
@@ -444,7 +475,7 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 decoded = base64.b64decode(match).decode('utf-8', errors='ignore')
                 # Check if decoded content looks like sensitive data
                 if any(keyword in decoded.lower() for keyword in ["password", "token", "key", "secret"]):
-                    self.add_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Sensitive Data in Base64",
                         "Medium",
                         f"Sensitive data found in Base64 encoded content",

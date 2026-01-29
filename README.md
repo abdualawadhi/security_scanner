@@ -103,7 +103,7 @@ http://localhost:5000
 
 3. **Start scanning**: Use the intuitive web interface to configure and run scans with real-time progress monitoring!
 
-See [WEB_FRONTEND_GUIDE.md](WEB_FRONTEND_GUIDE.md) for detailed documentation.
+See [docs/user_guide/WEB_FRONTEND_GUIDE.md](docs/user_guide/WEB_FRONTEND_GUIDE.md) for detailed documentation.
 
 ### Option 2: Command Line Interface
 
@@ -338,7 +338,7 @@ python cli.py --batch urls.txt --comparative --format txt --output executive_sum
 ## New Features Documentation
 
 ### 🌐 Web Frontend
-For comprehensive web interface documentation, see [WEB_FRONTEND_GUIDE.md](WEB_FRONTEND_GUIDE.md):
+For comprehensive web interface documentation, see [docs/user_guide/WEB_FRONTEND_GUIDE.md](docs/user_guide/WEB_FRONTEND_GUIDE.md):
 - Dashboard and statistics
 - Real-time scan monitoring
 - API endpoints reference
@@ -346,7 +346,7 @@ For comprehensive web interface documentation, see [WEB_FRONTEND_GUIDE.md](WEB_F
 - Deployment guidelines
 
 ### ✅ Vulnerability Verification
-For detailed verification documentation, see [VULNERABILITY_VERIFICATION_GUIDE.md](VULNERABILITY_VERIFICATION_GUIDE.md):
+For detailed verification documentation, see [docs/user_guide/VULNERABILITY_VERIFICATION_GUIDE.md](docs/user_guide/VULNERABILITY_VERIFICATION_GUIDE.md):
 - Supported vulnerability types
 - Verification methods
 - Safety considerations
@@ -354,7 +354,7 @@ For detailed verification documentation, see [VULNERABILITY_VERIFICATION_GUIDE.m
 - Extending verification
 
 ### 📋 Enhancement Summary
-For a complete overview of all enhancements, see [ENHANCEMENT_SUMMARY.md](ENHANCEMENT_SUMMARY.md):
+For a complete overview of all enhancements, see [docs/CHANGELOG.md](docs/CHANGELOG.md):
 - Architecture improvements
 - Performance considerations
 - Migration notes
@@ -407,6 +407,19 @@ This is an academic research project. Contributions are welcome in the form of:
 - Additional vulnerability checks
 - Documentation improvements
 - Research methodology suggestions
+
+## 📚 Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- **[Quick Start Guide](docs/user_guide/QUICK_START.md)** - Get up and running quickly with examples
+- **[Web Frontend Guide](docs/user_guide/WEB_FRONTEND_GUIDE.md)** - Complete web interface documentation
+- **[Verification Guide](docs/user_guide/VULNERABILITY_VERIFICATION_GUIDE.md)** - Active testing and verification
+- **[Technical Documentation](docs/technical/)** - Detailed vulnerability detection methods
+- **[Platform Guides](docs/platforms/)** - Platform-specific security analysis documentation
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - System design and extension guide
+- **[Changelog](docs/CHANGELOG.md)** - Complete history of enhancements
+- **[Documentation Index](docs/README.md)** - Complete documentation organization and standards
 
 ## License
 
