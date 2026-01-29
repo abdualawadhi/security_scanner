@@ -21,19 +21,44 @@ from .advanced_checks import AdvancedChecksMixin
 
 
 class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
-    """Specialized analyzer for Bubble.io applications"""
+    """
+    Specialized analyzer for Bubble.io applications.
+    
+    Provides comprehensive security analysis for Bubble.io low-code applications,
+    detecting workflow exposures, database schema leaks, authentication issues,
+    and privacy rule misconfigurations.
+    """
 
     def __init__(self, session: requests.Session):
+        """
+        Initialize Bubble analyzer.
+        
+        Args:
+            session: Configured requests session for HTTP operations
+        """
         super().__init__(session)
-        self.api_endpoints = []
-        self.workflow_patterns = []
-        self.database_schemas = []
-        self.privacy_rules = []
+        self.api_endpoints: List[str] = []
+        self.workflow_patterns: List[Dict[str, Any]] = []
+        self.database_schemas: List[Dict[str, Any]] = []
+        self.privacy_rules: List[Dict[str, Any]] = []
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
     ) -> Dict[str, Any]:
-        """Comprehensive Bubble.io security analysis"""
+        """
+        Comprehensive Bubble.io security analysis.
+        
+        Args:
+            url: Target URL being analyzed
+            response: HTTP response from target
+            soup: Parsed BeautifulSoup object
+            
+        Returns:
+            Dictionary containing analysis results and vulnerabilities
+        """
+        
+        # Record HTTP context for enriched vulnerability reporting
+        self._record_http_context(url, response)
 
         # Extract JavaScript content for analysis
         js_content = self._extract_javascript(soup)

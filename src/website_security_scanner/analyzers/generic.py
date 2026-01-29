@@ -22,19 +22,44 @@ from .advanced_checks import AdvancedChecksMixin
 
 
 class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
-    """Generic web application security analyzer"""
+    """
+    Generic web application security analyzer.
+    
+    Provides comprehensive security analysis for web applications that don't fit
+    specific low-code platform categories. Performs broad vulnerability scanning
+    including forms, links, scripts, and common web security issues.
+    """
 
     def __init__(self, session: requests.Session):
+        """
+        Initialize generic web analyzer.
+        
+        Args:
+            session: Configured requests session for HTTP operations
+        """
         super().__init__(session)
-        self.forms = []
-        self.links = []
-        self.scripts = []
-        self.endpoints = []
+        self.forms: List[Dict[str, Any]] = []
+        self.links: List[str] = []
+        self.scripts: List[str] = []
+        self.endpoints: List[str] = []
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
     ) -> Dict[str, Any]:
-        """Comprehensive generic web security analysis"""
+        """
+        Comprehensive generic web security analysis.
+        
+        Args:
+            url: Target URL being analyzed
+            response: HTTP response from target
+            soup: Parsed BeautifulSoup object
+            
+        Returns:
+            Dictionary containing analysis results and vulnerabilities
+        """
+        
+        # Record HTTP context for enriched vulnerability reporting
+        self._record_http_context(url, response)
 
         js_content = self._extract_javascript(soup)
         html_content = str(soup)

@@ -22,101 +22,26 @@ from .advanced_checks import AdvancedChecksMixin
 
 
 class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
-    """Specialized analyzer for Airtable applications"""
+    """
+    Specialized analyzer for Airtable applications.
+    
+    Provides comprehensive security analysis for Airtable low-code applications,
+    detecting exposures of base IDs, API keys, table schemas, and permission
+    configurations that could lead to unauthorized data access.
+    """
 
     def __init__(self, session: requests.Session):
+        """
+        Initialize Airtable analyzer.
+        
+        Args:
+            session: Configured requests session for HTTP operations
+        """
         super().__init__(session)
-        self.base_ids = []
-        self.api_keys = []
-        self.table_schemas = []
-        self.permission_models = []
-        # Keep the last main request/response for HTTP pair enrichment
-        self._last_request = None
-        self._last_response = None
-
-    def _record_http_context(self, url: str, response: requests.Response):
-        """Store the primary HTTP request/response for later use in findings."""
-        self._last_response = response
-        try:
-            self._last_request = response.request
-        except Exception:
-            self._last_request = None
-
-    def _build_http_instance(self, evidence_list: List[Any] = None) -> Dict[str, Any]:
-        """Build a basic HTTP instance dictionary (start line + headers only).
-
-        Bodies are intentionally omitted to focus on protocol and header context,
-        reducing report size and avoiding accidental data leakage.
-        """
-        req_txt = ""
-        resp_txt = ""
-        if self._last_request is not None:
-            try:
-                method = getattr(self._last_request, "method", "GET")
-                path = getattr(self._last_request, "path_url", "") or getattr(self._last_request, "url", "")
-                headers = "\n".join(f"{k}: {v}" for k, v in getattr(self._last_request, "headers", {}).items())
-                req_txt = f"{method} {path} HTTP/1.1\n{headers}"
-            except Exception:
-                req_txt = ""
-        if self._last_response is not None:
-            try:
-                status = self._last_response.status_code
-                reason = getattr(self._last_response, "reason", "")
-                headers = "\n".join(f"{k}: {v}" for k, v in self._last_response.headers.items())
-                resp_txt = f"HTTP/1.1 {status} {reason}\n{headers}"
-            except Exception:
-                resp_txt = ""
-        return {
-            "url": getattr(self._last_request, "url", None) or getattr(self._last_response, "url", ""),
-            "request": req_txt,
-            "response": resp_txt,
-            "evidence": evidence_list or [],
-        }
-
-    def _add_enriched_vulnerability(
-        self,
-        vuln_type: str,
-        severity: str,
-        description: str,
-        evidence: Any = "",
-        recommendation: str = "",
-        confidence: str = "Firm",
-        category: str = "General",
-        owasp: str = "N/A",
-        cwe: List[str] = None,
-        background: str = "",
-        impact: str = "",
-        references: List[str] = None,
-    ):
-        """Wrapper to add richer metadata plus HTTP instance to vulnerabilities.
-
-        This preserves the existing BaseAnalyzer.add_vulnerability behavior while
-        extending the stored dict with background, impact, references, and
-        a default HTTP instance for the main page.
-        """
-        # Handle evidence parameter - can be string, dict, or list
-        if isinstance(evidence, dict) or isinstance(evidence, list):
-            evidence_list = evidence if isinstance(evidence, list) else [evidence]
-        else:
-            evidence_list = [evidence] if evidence else []
-            
-        super().add_vulnerability(
-            vuln_type,
-            severity,
-            description,
-            evidence if isinstance(evidence, str) else str(evidence),
-            recommendation,
-            confidence,
-            category,
-            owasp,
-            cwe
-        )
-        vuln = self.vulnerabilities[-1]
-        vuln["background"] = background or ""
-        vuln["impact"] = impact or ""
-        vuln["references"] = references or []
-        if self._last_response is not None:
-            vuln["instances"] = [self._build_http_instance(evidence_list=evidence_list)]
+        self.base_ids: List[str] = []
+        self.api_keys: List[str] = []
+        self.table_schemas: List[Dict[str, Any]] = []
+        self.permission_models: List[Dict[str, Any]] = []
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
@@ -208,7 +133,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "pattern": rf"(?i){re.escape(match)}"
                     }
                     
-                    self._add_enriched_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Airtable Base ID Exposure",
                         "Medium",
                         f"Airtable Base ID exposed: {match}",
@@ -256,7 +181,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "pattern": rf"(?i){re.escape(match[:20])}"
                     }
                     
-                    self._add_enriched_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Airtable API Key Exposure",
                         "Critical",
                         f"Airtable API key exposed: {match[:10]}...",
@@ -304,7 +229,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     
                     # Check for sensitive field names
                     if any(sensitive in match.lower() for sensitive in ["email", "password", "phone", "ssn", "credit"]):
-                        self._add_enriched_vulnerability(
+                        self.add_enriched_vulnerability(
                             "Sensitive Table Field Exposure",
                             "Medium",
                             f"Sensitive table structure exposed: {match}",
@@ -353,7 +278,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
         # Check for public access
         if any(perm.lower() in ["public", "anyone", "all"] for perm in permissions_found):
-            self._add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Public Access Configuration",
                 "High",
                 "Airtable base appears to have public access",
@@ -402,7 +327,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "pattern": rf"(?i){re.escape(match)}"
                     }
                     
-                    self._add_enriched_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Unsafe Data Access Pattern",
                         "Medium",
                         f"Potentially unsafe data access: {match}",
@@ -434,7 +359,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 "pattern": r"(?i)[?&](session|token|sid)=[^&\s]*"
             }
             
-            self._add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Session Token in URL",
                 "Medium",
                 "Session token found in URL",
@@ -475,7 +400,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "pattern": rf"(?i){re.escape(match[:20])}"
                     }
                     
-                    self._add_enriched_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Potential Secret in JavaScript",
                         "High",
                         f"Potential secret found in JavaScript: {match[:10]}...",
@@ -511,7 +436,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 "pattern": r"(?i)^Set-Cookie:.*(session|auth|token|sid|cookie)[^\n]*",
             }
             
-            self._add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Insecure Cookie",
                 "Medium",
                 "Cookie lacks Secure flag",
@@ -541,7 +466,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check Content Security Policy"""
         csp = response.headers.get("Content-Security-Policy", "")
         if not csp:
-            self._add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing Content Security Policy",
                 "Low",
                 "No CSP header found",
@@ -575,7 +500,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     "pattern": f"Content-Security-Policy: {csp}",
                 }
                 
-                self._add_enriched_vulnerability(
+                self.add_enriched_vulnerability(
                     "Weak Content Security Policy",
                     "Medium",
                     f"CSP contains weak directives: {csp[:100]}...",
@@ -603,7 +528,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check for clickjacking protection"""
         xfo = response.headers.get("X-Frame-Options", "")
         if not xfo:
-            self._add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing Clickjacking Protection",
                 "Low",
                 "No X-Frame-Options header",
@@ -635,7 +560,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 "pattern": f"X-Frame-Options: {xfo}",
             }
             
-            self._add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Weak Clickjacking Protection",
                 "Low",
                 f"Weak X-Frame-Options value: {xfo}",
@@ -675,7 +600,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     "pattern": pattern
                 }
                 
-                self._add_enriched_vulnerability(
+                self.add_enriched_vulnerability(
                     "Information Disclosure",
                     "Low",
                     "Potential error information exposed",
@@ -715,7 +640,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "pattern": rf"(?i){re.escape(value)}"
                     }
                     
-                    self._add_enriched_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Reflected Input (Potential XSS)",
                         "Medium",
                         f"Input parameter '{param}' is reflected in response",
@@ -751,7 +676,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 "pattern": r"(?i)^Cache-Control:.*"
             } if cache_control else []
             
-            self._add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Cacheable HTTPS Response",
                 "Low",
                 "HTTPS response may be cached",
@@ -795,7 +720,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "pattern": rf"(?i){re.escape(match)}"
                     }
                     
-                    self._add_enriched_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Open Redirection",
                         "Medium",
                         f"Potential open redirection: {match}",
@@ -839,7 +764,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "pattern": pattern
                     }
                     
-                    self._add_enriched_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Missing AJAX Security Headers",
                         "Low",
                         "AJAX requests may lack security headers",
@@ -870,7 +795,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         """Check HSTS implementation"""
         hsts = response.headers.get("Strict-Transport-Security", "")
         if not hsts:
-            self._add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing HSTS Header",
                 "Low",
                 "No HSTS header found",
@@ -904,7 +829,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     "pattern": f"Strict-Transport-Security: {hsts}",
                 }
                 
-                self._add_enriched_vulnerability(
+                self.add_enriched_vulnerability(
                     "Weak HSTS Configuration",
                     "Low",
                     f"HSTS has weak max-age: {hsts[:50]}...",
@@ -942,7 +867,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             else:
                 xcto_evidence = []  # No header to highlight when missing
                 
-            self._add_enriched_vulnerability(
+            self.add_enriched_vulnerability(
                 "Missing X-Content-Type-Options",
                 "Low",
                 "X-Content-Type-Options header missing or incorrect",
@@ -987,7 +912,7 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         "pattern": rf"(?i){re.escape(version)}"
                     }
                     
-                    self._add_enriched_vulnerability(
+                    self.add_enriched_vulnerability(
                         "Potentially Vulnerable Dependency",
                         "Low",
                         f"Old library version detected: {version}",
