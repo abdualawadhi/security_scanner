@@ -20,18 +20,43 @@ from .advanced_checks import AdvancedChecksMixin
 
 
 class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
-    """Specialized analyzer for OutSystems applications"""
+    """
+    Specialized analyzer for OutSystems applications.
+    
+    Provides comprehensive security analysis for OutSystems low-code applications,
+    detecting REST API exposures, screen action vulnerabilities, entity leaks,
+    and role-based access control misconfigurations.
+    """
 
     def __init__(self, session: requests.Session):
+        """
+        Initialize OutSystems analyzer.
+        
+        Args:
+            session: Configured requests session for HTTP operations
+        """
         super().__init__(session)
-        self.rest_apis = []
-        self.screen_actions = []
-        self.entities = []
+        self.rest_apis: List[str] = []
+        self.screen_actions: List[Dict[str, Any]] = []
+        self.entities: List[Dict[str, Any]] = []
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
     ) -> Dict[str, Any]:
-        """Comprehensive OutSystems security analysis"""
+        """
+        Comprehensive OutSystems security analysis.
+        
+        Args:
+            url: Target URL being analyzed
+            response: HTTP response from target
+            soup: Parsed BeautifulSoup object
+            
+        Returns:
+            Dictionary containing analysis results and vulnerabilities
+        """
+        
+        # Record HTTP context for enriched vulnerability reporting
+        self._record_http_context(url, response)
 
         js_content = self._extract_javascript(soup)
         html_content = str(soup)

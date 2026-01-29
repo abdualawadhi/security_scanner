@@ -3,8 +3,8 @@
 Utility Functions for Low-Code Platform Security Scanner
 Bachelor Thesis: Low-Code Platforms for E-commerce: Comparative Security Analysis
 
-This module contains utility functions for report generation, data processing,
-and common operations used throughout the security scanner.
+This module contains professional utility functions for report generation, data processing,
+validation, and common operations used throughout the security scanner.
 
 Author: Bachelor Thesis Project
 """
@@ -21,6 +21,101 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import requests
 from bs4 import BeautifulSoup
+
+
+def normalize_url(url: str) -> str:
+    """
+    Normalize URL to standard format.
+    
+    Args:
+        url: URL to normalize
+        
+    Returns:
+        Normalized URL with scheme and trailing slash handling
+    """
+    url = url.strip()
+    
+    # Add http:// if no scheme present
+    if not url.startswith(('http://', 'https://')):
+        url = 'http://' + url
+    
+    # Parse and reconstruct
+    parsed = urllib.parse.urlparse(url)
+    
+    # Ensure lowercase scheme and netloc
+    normalized = urllib.parse.urlunparse((
+        parsed.scheme.lower(),
+        parsed.netloc.lower(),
+        parsed.path,
+        parsed.params,
+        parsed.query,
+        parsed.fragment
+    ))
+    
+    return normalized
+
+
+def is_valid_url(url: str) -> bool:
+    """
+    Validate if string is a valid URL.
+    
+    Args:
+        url: URL string to validate
+        
+    Returns:
+        True if valid URL, False otherwise
+    """
+    try:
+        result = urllib.parse.urlparse(url)
+        return all([result.scheme in ('http', 'https'), result.netloc])
+    except Exception:
+        return False
+
+
+def extract_domain(url: str) -> str:
+    """
+    Extract domain from URL.
+    
+    Args:
+        url: URL to extract domain from
+        
+    Returns:
+        Domain name (netloc) from URL
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+        return parsed.netloc.lower()
+    except Exception:
+        return ""
+
+
+def calculate_security_score(security_headers: Dict[str, str]) -> float:
+    """
+    Calculate numerical security score from security headers.
+    
+    Args:
+        security_headers: Dictionary of security headers
+        
+    Returns:
+        Security score between 0.0 and 1.0
+    """
+    expected_headers = [
+        "X-Frame-Options",
+        "X-Content-Type-Options",
+        "X-XSS-Protection",
+        "Strict-Transport-Security",
+        "Content-Security-Policy",
+        "Referrer-Policy",
+        "Permissions-Policy",
+        "X-Permitted-Cross-Domain-Policies",
+    ]
+    
+    present_count = sum(
+        1 for header in expected_headers
+        if security_headers.get(header, "Missing") != "Missing"
+    )
+    
+    return present_count / len(expected_headers) if expected_headers else 0.0
 
 
 class SecurityUtils:
