@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Low-Code Security Scanner{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Security Reports</h1>
+        <p class="text-gray-600">Download and manage professional security reports</p>
+    </div>
+
+    <!-- Report Generation -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Generate Report</h2>
+        <p class="text-gray-600 mb-4">
+            Professional HTML reports are automatically generated for completed scans. 
+            Download them from the scan history or the actions below.
+        </p>
+        <button onclick="window.location.href='/history'" 
+                class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">
+            <i class="fas fa-arrow-left mr-2"></i> Go to Scan History
+        </button>
+    </div>
+
+    <!-- Report Information -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-3">
+                <i class="fas fa-file-code text-blue-600 mr-2"></i> HTML Reports
+            </h3>
+            <ul class="space-y-2 text-sm text-gray-600">
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                    <span>Burp Suite-style professional formatting</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                    <span>Detailed vulnerability descriptions with evidence</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                    <span>Security header and SSL/TLS analysis</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                    <span>HTTP request/response context</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                    <span>CWE/CAPEC classifications</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-3">
+                <i class="fas fa-chart-bar text-green-600 mr-2"></i> Report Features
+            </h3>
+            <ul class="space-y-2 text-sm text-gray-600">
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                    <span>Executive summary with risk scoring</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                    <span>Severity/confidence matrix visualization</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                    <span>Platform-specific findings section</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                    <span>Remediation references and guidelines</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                    <span>Verification status for tested vulnerabilities</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Sample Report Preview -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Report Sample Preview</h2>
+        <div class="border-2 border-gray-200 rounded-lg p-4">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400'%3E%3Crect fill='%23f3f4f6' width='800' height='400'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='monospace' font-size='24' fill='%236b7280'%3ESample Security Report Preview%3C/text%3E%3C/svg%3E" 
+                 alt="Report Preview" class="w-full rounded shadow-sm">
+        </div>
+        <p class="mt-4 text-sm text-gray-600">
+            Professional HTML reports include detailed vulnerability information, 
+            risk assessment, and comprehensive security analysis in a clean, 
+            professional format inspired by industry-standard tools.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('Reports page loaded');
+    });
+</script>
+{% endblock %}
