@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Low-Code Security Scanner{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .scan-progress {
+            transition: width 0.3s ease;
+        }
+        .severity-critical { background-color: #dc2626; color: white; }
+        .severity-high { background-color: #ea580c; color: white; }
+        .severity-medium { background-color: #f59e0b; color: white; }
+        .severity-low { background-color: #3b82f6; color: white; }
+        .severity-info { background-color: #6b7280; color: white; }
+        
+        .status-running { background-color: #3b82f6; }
+        .status-completed { background-color: #10b981; }
+        .status-failed { background-color: #dc2626; }
+        .status-queued { background-color: #6b7280; }
+        
+        .pulse-animation {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="gradient-bg shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-shield-alt text-white text-2xl mr-3"></i>
+                    <span class="text-white text-xl font-bold">Low-Code Security Scanner</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-white hover:text-gray-200 px-3 py-2 rounded-md">
+                        <i class="fas fa-home mr-1"></i> Dashboard
+                    </a>
+                    <a href="/scan" class="text-white hover:text-gray-200 px-3 py-2 rounded-md">
+                        <i class="fas fa-search mr-1"></i> New Scan
+                    </a>
+                    <a href="/history" class="text-white hover:text-gray-200 px-3 py-2 rounded-md">
+                        <i class="fas fa-history mr-1"></i> History
+                    </a>
+                    <a href="/reports" class="text-white hover:text-gray-200 px-3 py-2 rounded-md">
+                        <i class="fas fa-file-alt mr-1"></i> Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="text-center">
+                <p>&copy; 2024 Low-Code Security Scanner. Professional Security Assessment Tool.</p>
+                <p class="text-sm text-gray-400 mt-2">Bachelor Thesis: Comparative Security Analysis</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- WebSocket Connection -->
+    <script>
+        // Initialize Socket.IO
+        const socket = io();
+        
+        socket.on('connect', () => {
+            console.log('Connected to scanner server');
+        });
+        
+        socket.on('disconnect', () => {
+            console.log('Disconnected from scanner server');
+        });
+        
+        // Global utility functions
+        function getSeverityClass(severity) {
+            const sev = severity.toLowerCase();
+            if (sev === 'critical') return 'severity-critical';
+            if (sev === 'high') return 'severity-high';
+            if (sev === 'medium') return 'severity-medium';
+            if (sev === 'low') return 'severity-low';
+            return 'severity-info';
+        }
+        
+        function getStatusClass(status) {
+            const st = status.toLowerCase();
+            return `status-${st}`;
+        }
+        
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString();
+        }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -13,6 +13,20 @@ This tool performs automated security assessments of low-code applications built
 
 ## Features
 
+### 🌐 Professional Web Frontend (NEW!)
+- **Modern Web Interface**: Real-time dashboard with live scan monitoring
+- **Interactive Scanning**: Single and batch URL scanning with progress tracking
+- **WebSocket Integration**: Live updates via Socket.IO
+- **Comprehensive History**: Filterable scan history with detailed results
+- **One-Click Reports**: Professional HTML reports with download capability
+
+### ✅ Vulnerability Verification (NEW!)
+- **Active Testing**: Confirms detected vulnerabilities with safe exploitation attempts
+- **8 Vulnerability Types**: XSS, SQLi, Command Injection, Path Traversal, SSRF, Open Redirect, XXE, CSRF
+- **Confidence Levels**: Upgrades findings from Tentative to Firm/Certain
+- **Safe Payloads**: Non-destructive testing with ethical boundaries
+- **Detailed Evidence**: Payload information and verification methods in reports
+
 ### 🔍 Comprehensive Security Analysis
 - **Platform-Specific Vulnerability Detection**: Tailored checks for each low-code platform
 - **Common Web Vulnerabilities**: XSS, SQL Injection, CSRF, and more
@@ -21,10 +35,11 @@ This tool performs automated security assessments of low-code applications built
 - **API Endpoint Discovery**: Identification of exposed APIs and workflows
 
 ### 📊 Advanced Reporting
+- **Professional HTML Reports**: Burp Suite-style formatting with severity matrices
 - **Multiple Output Formats**: JSON, YAML, HTML, and plain text reports
 - **Comparative Analysis**: Cross-platform security comparison
 - **Executive Summaries**: High-level security assessment overviews
-- **Vulnerability Prioritization**: Risk-based recommendation matrix
+- **Verification Results**: Includes active testing outcomes with evidence
 
 ### 🎯 Platform-Specific Checks
 
@@ -74,21 +89,45 @@ python main.py --help
 
 ## Quick Start
 
-### Basic Usage
+### Option 1: Web Interface (Recommended)
+
+1. **Start the web server**:
+```bash
+python src/website_security_scanner/web/run_server.py
+```
+
+2. **Open in browser**:
+```
+http://localhost:5000
+```
+
+3. **Start scanning**: Use the intuitive web interface to configure and run scans with real-time progress monitoring!
+
+See [WEB_FRONTEND_GUIDE.md](WEB_FRONTEND_GUIDE.md) for detailed documentation.
+
+### Option 2: Command Line Interface
 
 1. **Scan a single URL**:
 ```bash
-python cli.py --url https://your-app.bubbleapps.io/app-name
+python -m website_security_scanner.cli.cli --url https://your-app.bubbleapps.io/app-name
 ```
 
-2. **Scan multiple URLs from a file**:
+2. **Scan with vulnerability verification**:
 ```bash
-python cli.py --batch urls.txt --output results.json
+python -m website_security_scanner.cli.cli \
+  --url https://your-app.bubbleapps.io \
+  --enhanced \
+  --verify-vulnerabilities
 ```
 
-3. **Generate comparative analysis**:
+3. **Scan multiple URLs from a file**:
 ```bash
-python cli.py --batch urls.txt --comparative --output comparative_report.json
+python -m website_security_scanner.cli.cli --batch urls.txt --output results.json
+```
+
+4. **Generate comparative analysis**:
+```bash
+python -m website_security_scanner.cli.cli --batch urls.txt --comparative --output comparative_report.json
 ```
 
 ### Example URLs File (urls.txt)
@@ -296,23 +335,48 @@ python cli.py --batch urls.txt --comparative --format txt --output executive_sum
 - **OutSystems**: Limited to publicly accessible endpoints and client code
 - **Airtable**: Primarily analyzes embedded applications and shared bases
 
+## New Features Documentation
+
+### 🌐 Web Frontend
+For comprehensive web interface documentation, see [WEB_FRONTEND_GUIDE.md](WEB_FRONTEND_GUIDE.md):
+- Dashboard and statistics
+- Real-time scan monitoring
+- API endpoints reference
+- WebSocket events
+- Deployment guidelines
+
+### ✅ Vulnerability Verification
+For detailed verification documentation, see [VULNERABILITY_VERIFICATION_GUIDE.md](VULNERABILITY_VERIFICATION_GUIDE.md):
+- Supported vulnerability types
+- Verification methods
+- Safety considerations
+- Usage examples
+- Extending verification
+
+### 📋 Enhancement Summary
+For a complete overview of all enhancements, see [ENHANCEMENT_SUMMARY.md](ENHANCEMENT_SUMMARY.md):
+- Architecture improvements
+- Performance considerations
+- Migration notes
+- Future roadmap
+
 ## Troubleshooting
 
 ### Common Issues
 
 1. **SSL Certificate Errors**:
 ```bash
-python cli.py --url <URL> --no-ssl-verify
+python -m website_security_scanner.cli.cli --url <URL> --no-ssl-verify
 ```
 
 2. **Timeout Issues**:
 ```bash
-python cli.py --url <URL> --timeout 30
+python -m website_security_scanner.cli.cli --url <URL> --timeout 30
 ```
 
 3. **Rate Limiting**:
 ```bash
-python cli.py --batch urls.txt --delay 5
+python -m website_security_scanner.cli.cli --batch urls.txt --delay 5
 ```
 
 4. **Permission Errors**:
@@ -320,9 +384,19 @@ python cli.py --batch urls.txt --delay 5
 - Check file path validity
 - Verify URL accessibility
 
+5. **Web Frontend Issues**:
+- Check port 5000 is not in use
+- Ensure all dependencies installed (`pip install -r requirements.txt`)
+- Verify WebSocket connection in browser console
+
 ### Debug Mode
 ```bash
-python cli.py --url <URL> --verbose
+python -m website_security_scanner.cli.cli --url <URL> --verbose
+```
+
+### Web Server Debug
+```bash
+python src/website_security_scanner/web/run_server.py --debug
 ```
 
 ## Contributing
