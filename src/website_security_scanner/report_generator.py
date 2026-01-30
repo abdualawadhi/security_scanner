@@ -11,11 +11,14 @@ class ProfessionalReportGenerator:
         if output_path is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_path = f"security_report_{timestamp}.html"
-        
-        html_content = self._generate_html(scan_results)
+
+        html_content = self.generate_html_content(scan_results)
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
         return output_path
+
+    def generate_html_content(self, scan_results):
+        return self._generate_html(scan_results)
     
     def _generate_html(self, results):
         return f"""<!DOCTYPE html>
