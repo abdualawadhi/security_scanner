@@ -59,9 +59,6 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         # Record HTTP context for enriched vulnerability reporting
         self._record_http_context(url, response)
 
-        # Record HTTP context for use in enriched vulnerabilities
-        self._record_http_context(url, response)
-
         js_content = self._extract_javascript(soup)
         html_content = str(soup)
 
