@@ -844,3 +844,263 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 impact="MIME-sniffing can lead to security vulnerabilities where a browser interprets a response in a different way than intended, potentially leading to XSS.",
                 references=["https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options"]
             )
+
+    def _check_http2_support(self, url: str):
+        """Check for HTTP/2 protocol support (Hidden HTTP/2)"""
+        try:
+            import ssl
+            import socket
+
+            # Parse URL to get host
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            host = parsed.hostname
+            port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+
+            # Create SSL context to check HTTP/2 support
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+
+            with socket.create_connection((host, port)) as sock:
+                with context.wrap_socket(sock, server_hostname=host) as ssock:
+                    # Check if HTTP/2 is supported via ALPN
+                    negotiated_protocol = ssock.selected_alpn_protocol()
+                    if negotiated_protocol == 'h2':
+                        self.add_enriched_vulnerability(
+                            "Hidden HTTP/2",
+                            "Info",
+                            "Origin advertises HTTP/2 (h2) via ALPN; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
+                            f"HTTP/2 protocol negotiated: {negotiated_protocol}",
+                            "Ensure HTTP/2-specific security controls are implemented including HPACK compression controls and DoS protection.",
+                            category="Protocol",
+                            owasp="A05:2021 - Security Misconfiguration",
+                            cwe=["CWE-16"],
+                            background="HTTP/2 introduces new attack vectors compared to HTTP/1.1, including HPACK compression attacks and request multiplexing vulnerabilities.",
+                            impact="HTTP/2-specific attacks could bypass traditional protections. HPACK compression can be exploited for DoS attacks.",
+                            references=[
+                                "https://portswigger.net/research/http2",
+                                "https://cwe.mitre.org/data/definitions/16.html"
+                            ]
+                        )
+        except Exception:
+            # If we can't check HTTP/2, don't report an error
+            pass
+
+    def _check_request_url_override(self, url: str):
+        """Check for request URL override vulnerabilities"""
+        # This would check for URL override parameters that could be manipulated
+        # For now, implement a basic check for common override parameters
+        try:
+            from urllib.parse import urlparse, parse_qs
+            parsed = urlparse(url)
+            query_params = parse_qs(parsed.query)
+
+            override_params = ['url', 'redirect', 'return', 'next', 'continue', 'goto', 'dest']
+            for param in override_params:
+                if param in query_params:
+                    self.add_enriched_vulnerability(
+                        "Request URL Override",
+                        "Low",
+                        f"URL override parameter '{param}' found in request",
+                        f"Parameter '{param}' with value: {query_params[param][0][:100]}...",
+                        "Validate and sanitize URL parameters that control redirects or resource loading.",
+                        category="Injection",
+                        owasp="A03:2021 - Injection",
+                        cwe=["CWE-601"],
+                        background="URL override parameters can be manipulated by attackers to redirect users to malicious sites or load unauthorized resources.",
+                        impact="Can lead to phishing attacks, open redirect vulnerabilities, and unauthorized resource access.",
+                        references=["https://owasp.org/www-community/attacks/Open_redirect"]
+                    )
+        except Exception:
+            pass
+
+    def _check_cookie_domain_scoping(self, response: requests.Response, url: str):
+        """Check for cookie domain scoping issues"""
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            site_domain = parsed.hostname
+
+            for cookie_header in response.headers.getlist('Set-Cookie'):
+                # Parse cookie manually since we don't have http.cookies
+                cookie_parts = cookie_header.split(';')
+                cookie_name_value = cookie_parts[0].strip()
+                cookie_attrs = [part.strip() for part in cookie_parts[1:]]
+
+                domain_attr = None
+                for attr in cookie_attrs:
+                    if attr.lower().startswith('domain='):
+                        domain_attr = attr.split('=', 1)[1].strip()
+                        break
+
+                if domain_attr:
+                    # Check if domain is too broad
+                    if not (domain_attr == site_domain or site_domain.endswith('.' + domain_attr)):
+                        self.add_enriched_vulnerability(
+                            "Cookie Domain Scoping Issue",
+                            "Low",
+                            f"Cookie domain '{domain_attr}' is too broad for site '{site_domain}'",
+                            f"Cookie: {cookie_name_value}, Domain: {domain_attr}",
+                            "Set cookie domain to the most specific domain possible, preferably omit domain attribute for host-only cookies.",
+                            category="Cookie Security",
+                            owasp="A05:2021 - Security Misconfiguration",
+                            cwe=["CWE-565"],
+                            background="Overly broad cookie domains can allow cookies to be sent to unintended subdomains, potentially exposing them to attacks.",
+                            impact="Cookies may be sent to unintended domains, increasing attack surface and potential for cookie theft.",
+                            references=["https://tools.ietf.org/html/rfc6265#section-4.1.2.3"]
+                        )
+        except Exception:
+            pass
+
+    def _check_cloud_resources(self, js_content: str):
+        """Check for exposed cloud resources in JavaScript"""
+        import re
+
+        # Patterns for cloud resource URLs
+        cloud_patterns = [
+            r'https?://[^\'"]*\.s3\.amazonaws\.com[^\'"]*',
+            r'https?://[^\'"]*\.blob\.core\.windows\.net[^\'"]*',
+            r'https?://[^\'"]*\.googleapis\.com[^\'"]*',
+            r'https?://[^\'"]*\.cloudfront\.net[^\'"]*',
+            r'https?://storage\.googleapis\.com[^\'"]*'
+        ]
+
+        for pattern in cloud_patterns:
+            matches = re.findall(pattern, js_content, re.IGNORECASE)
+            for match in matches:
+                if 'private' not in match.lower() and 'signed' not in match.lower():
+                    self.add_enriched_vulnerability(
+                        "Cloud Resource Exposure",
+                        "Medium",
+                        "Potentially exposed cloud storage resource found in JavaScript",
+                        f"Resource URL: {match[:100]}...",
+                        "Ensure cloud storage resources are properly secured with appropriate access controls and signed URLs.",
+                        category="Information Disclosure",
+                        owasp="A01:2021 - Broken Access Control",
+                        cwe=["CWE-284"],
+                        background="Cloud storage resources that are publicly accessible can expose sensitive data or allow unauthorized access.",
+                        impact="Sensitive data may be exposed to unauthorized users, leading to data breaches or further attacks.",
+                        references=[
+                            "https://owasp.org/www-project-top-ten/OWASP_Top_Ten_2017/Top_10-2017_A5-Broken_Access_Control",
+                            "https://cwe.mitre.org/data/definitions/284.html"
+                        ]
+                    )
+
+    def _check_secret_uncached_url_input(self, url: str, response: requests.Response):
+        """Check for secret input in uncached URL parameters"""
+        try:
+            from urllib.parse import urlparse, parse_qs
+            parsed = urlparse(url)
+            query_params = parse_qs(parsed.query)
+
+            # Check for potential secrets in URL parameters
+            secret_indicators = ['key', 'token', 'secret', 'password', 'api_key', 'apikey', 'auth', 'session']
+            cache_headers = response.headers.get('Cache-Control', '').lower()
+
+            # If response is not cached (no-store, private, etc.), check for secrets
+            if 'no-store' in cache_headers or 'private' in cache_headers:
+                for param_name, param_values in query_params.items():
+                    if any(indicator in param_name.lower() for indicator in secret_indicators):
+                        for value in param_values:
+                            if len(value) > 10:  # Only flag potentially sensitive values
+                                self.add_enriched_vulnerability(
+                                    "Secret in Uncached URL",
+                                    "Medium",
+                                    f"Potential secret found in URL parameter '{param_name}'",
+                                    f"Parameter value: {value[:50]}... (response not cached)",
+                                    "Avoid placing secrets in URL parameters. Use POST requests or secure headers for sensitive data.",
+                                    category="Information Disclosure",
+                                    owasp="A02:2021 - Cryptographic Failures",
+                                    cwe=["CWE-598"],
+                                    background="Secrets in URL parameters can be logged by proxies, stored in browser history, and leaked through referrer headers.",
+                                    impact="Secrets may be exposed in logs, browser history, or referrer headers, compromising security.",
+                                    references=[
+                                        "https://cwe.mitre.org/data/definitions/598.html",
+                                        "https://owasp.org/www-community/attacks/Password_in_URL"
+                                    ]
+                                )
+        except Exception:
+            pass
+
+    def _check_dom_data_manipulation(self, js_content: str):
+        """Check for DOM data manipulation vulnerabilities"""
+        import re
+
+        # Look for dangerous DOM sinks with user-controlled data
+        dangerous_patterns = [
+            r'innerHTML\s*=\s*[^;]+',
+            r'outerHTML\s*=\s*[^;]+',
+            r'document\.write\s*\([^)]+\)',
+            r'document\.writeln\s*\([^)]+\)',
+            r'eval\s*\([^)]+\)',
+            r'setTimeout\s*\([^)]*eval[^)]*\)',
+            r'setInterval\s*\([^)]*eval[^)]*\)'
+        ]
+
+        for pattern in dangerous_patterns:
+            matches = re.findall(pattern, js_content, re.IGNORECASE)
+            for match in matches:
+                if 'location.' in match or 'document.' in match or 'window.' in match:
+                    self.add_enriched_vulnerability(
+                        "DOM Data Manipulation",
+                        "Medium",
+                        "Potentially dangerous DOM manipulation with user-controlled data",
+                        f"Code pattern: {match[:100]}...",
+                        "Avoid using dangerous DOM sinks with untrusted data. Use safe alternatives like textContent or proper sanitization.",
+                        category="Cross-Site Scripting",
+                        owasp="A03:2021 - Injection",
+                        cwe=["CWE-79"],
+                        background="DOM-based XSS occurs when untrusted data is used in dangerous DOM operations without proper validation or sanitization.",
+                        impact="Can lead to XSS attacks where malicious scripts are executed in users' browsers.",
+                        references=[
+                            "https://owasp.org/www-community/attacks/DOM_Based_XSS",
+                            "https://portswigger.net/web-security/cross-site-scripting/dom-based"
+                        ]
+                    )
+
+    def _check_secret_input_header_reflection(self, url: str):
+        """Check for secret input reflected in headers"""
+        try:
+            # This would typically check if secrets from input are reflected in response headers
+            # For now, implement a basic check by making a test request
+            import requests
+            from urllib.parse import urlparse
+
+            parsed = urlparse(url)
+            test_params = {
+                'test_secret': 'secret_value_123',
+                'api_key': 'test_key_456'
+            }
+
+            test_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+            if parsed.query:
+                test_url += f"?{parsed.query}&test_secret=secret_value_123&api_key=test_key_456"
+            else:
+                test_url += "?test_secret=secret_value_123&api_key=test_key_456"
+
+            # Use the session from the analyzer
+            response = self.session.get(test_url, timeout=10)
+
+            # Check if our test secrets appear in response headers
+            for header_name, header_value in response.headers.items():
+                if 'secret_value_123' in header_value or 'test_key_456' in header_value:
+                    self.add_enriched_vulnerability(
+                        "Secret Input Header Reflection",
+                        "Medium",
+                        f"User input reflected in response header '{header_name}'",
+                        f"Header value: {header_value[:100]}...",
+                        "Avoid reflecting user input in response headers. Validate and sanitize all input before use.",
+                        category="Injection",
+                        owasp="A03:2021 - Injection",
+                        cwe=["CWE-79"],
+                        background="When user input is reflected in HTTP headers without proper validation, it can lead to header injection attacks.",
+                        impact="Can lead to HTTP header injection, cache poisoning, or other injection-based attacks.",
+                        references=[
+                            "https://owasp.org/www-community/attacks/HTTP_Response_Splitting",
+                            "https://cwe.mitre.org/data/definitions/79.html"
+                        ]
+                    )
+        except Exception:
+            # Don't fail if the test request doesn't work
+            pass

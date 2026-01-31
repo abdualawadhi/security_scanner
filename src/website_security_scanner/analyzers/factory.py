@@ -29,6 +29,8 @@ def get_analyzer_for_platform(platform_type: str, session: requests.Session) -> 
         "outsystems.dev": OutSystemsAnalyzer,
         "airtable": AirtableAnalyzer,
         "airtable.com": AirtableAnalyzer,
+        "mern": GenericWebAnalyzer,
+        "mern-stack": GenericWebAnalyzer,
         "generic": GenericWebAnalyzer,
         "unknown": GenericWebAnalyzer,
     }

@@ -93,6 +93,7 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self._check_command_injection(js_content)
         self._check_file_upload(soup)
         self._check_websockets(js_content)
+        self._check_tls_certificate(url)
 
         # Advanced Burp-aligned checks
         self._check_http2_support(url)
@@ -280,34 +281,61 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     )
 
     def _check_cookie_security(self, response: requests.Response):
-        """Check cookie security headers"""
-        cookies = response.headers.get("Set-Cookie", "")
-        if "Secure" not in cookies:
+        """Check cookie security headers comprehensively"""
+        set_cookie_header = response.headers.get("Set-Cookie", "")
+        if not set_cookie_header:
+            return
+
+        # Parse individual cookies from Set-Cookie header
+        cookies = set_cookie_header.split(', ')
+        insecure_cookies = []
+        missing_httponly = []
+        missing_secure = []
+
+        for cookie in cookies:
+            cookie = cookie.strip()
+            if not cookie:
+                continue
+
+            # Extract cookie name
+            cookie_name = cookie.split('=')[0].strip() if '=' in cookie else 'Unknown'
+
+            # Check for Secure flag
+            if "Secure" not in cookie:
+                missing_secure.append(cookie_name)
+
+            # Check for HttpOnly flag
+            if "HttpOnly" not in cookie:
+                missing_httponly.append(cookie_name)
+
+        # Report missing Secure flags
+        if missing_secure:
             self.add_enriched_vulnerability(
-                "Insecure Cookie",
-                "Medium",
-                "Cookie lacks Secure flag",
-                cookies[:50],
-                "Set Secure flag for cookies",
+                "Cookie Security Issues",
+                "Info",
+                f"Cookies missing Secure attribute: {', '.join(missing_secure)}",
+                f"Missing Secure flag on cookies in HTTPS session",
+                "Set the 'Secure' flag for all cookies to ensure they are only transmitted over HTTPS",
                 category="Session Management",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-614"]
             )
-        
-        if "HttpOnly" not in cookies:
+
+        # Report missing HttpOnly flags
+        if missing_httponly:
             self.add_enriched_vulnerability(
-                "Cookie Missing HttpOnly",
-                "Low",
-                "Cookie lacks HttpOnly flag",
-                cookies[:50],
-                "Set HttpOnly flag for cookies",
+                "Cookie Security Issues",
+                "Info",
+                f"Cookies missing HttpOnly attribute: {', '.join(missing_httponly)}",
+                f"Missing HttpOnly flag prevents JavaScript access to cookies",
+                "Set the 'HttpOnly' flag for session cookies to prevent XSS attacks from stealing them",
                 category="Session Management",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-1007"]
             )
 
     def _check_csp_policy(self, response: requests.Response):
-        """Check Content Security Policy"""
+        """Check Content Security Policy for weaknesses"""
         csp = response.headers.get("Content-Security-Policy", "")
         if not csp:
             self.add_enriched_vulnerability(
@@ -316,6 +344,70 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 "No CSP header found",
                 "",
                 "Implement Content Security Policy",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-693"]
+            )
+            return
+
+        # Analyze CSP for weak configurations
+        csp_lower = csp.lower()
+
+        # Check for unsafe-inline in script-src or default-src
+        if "'unsafe-inline'" in csp_lower:
+            self.add_enriched_vulnerability(
+                "CSP Weak Configuration",
+                "Info",
+                "CSP contains unsafe-inline allowing arbitrary script execution",
+                "'unsafe-inline' found in CSP",
+                "Remove 'unsafe-inline' and use nonce or hash-based CSP",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-116"]
+            )
+
+        # Check for unsafe-eval
+        if "'unsafe-eval'" in csp_lower:
+            self.add_enriched_vulnerability(
+                "CSP Weak Configuration",
+                "Info",
+                "CSP contains unsafe-eval allowing code evaluation",
+                "'unsafe-eval' found in CSP",
+                "Remove 'unsafe-eval' from CSP",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-116"]
+            )
+
+        # Check for overly permissive sources
+        permissive_sources = ["*", "http:", "data:", "blob:", "filesystem:"]
+        for source in permissive_sources:
+            if source in csp_lower:
+                self.add_enriched_vulnerability(
+                    "CSP Weak Configuration",
+                    "Info",
+                    f"CSP contains overly permissive source: {source}",
+                    f"'{source}' found in CSP",
+                    "Restrict CSP sources to specific trusted domains",
+                    category="Security Headers",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-116"]
+                )
+
+        # Check for missing key directives
+        required_directives = ["default-src", "script-src", "style-src", "img-src", "connect-src"]
+        missing_directives = []
+        for directive in required_directives:
+            if directive not in csp_lower:
+                missing_directives.append(directive)
+
+        if missing_directives:
+            self.add_enriched_vulnerability(
+                "Incomplete CSP",
+                "Info",
+                f"CSP missing key directives: {', '.join(missing_directives)}",
+                f"Missing: {', '.join(missing_directives)}",
+                "Add missing CSP directives for comprehensive protection",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-693"]
@@ -519,21 +611,37 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     )
 
     def _check_robots_txt(self, url: str):
-        """Check robots.txt for information disclosure"""
+        """Check robots.txt for information disclosure and presence"""
         from urllib.parse import urljoin
         try:
             robots_url = urljoin(url, "/robots.txt")
             response = self.session.get(robots_url, timeout=5)
             if response.status_code == 200:
                 content = response.text
+
+                # Report presence of robots.txt (informational)
+                self.add_enriched_vulnerability(
+                    "Robots.txt File",
+                    "Info",
+                    "The web server contains a robots.txt file.",
+                    f"robots.txt found at {robots_url}",
+                    "The robots.txt file is used to give instructions to web robots. Ensure it does not disclose sensitive paths.",
+                    category="Information Disclosure",
+                    owasp="A09:2021 - Security Logging and Monitoring Failures",
+                    cwe=["CWE-200"],
+                    background="The robots.txt file tells search engine crawlers which parts of the site they should or shouldn't access.",
+                    impact="Informational - robots.txt is a standard file but may reveal site structure.",
+                    references=["https://developers.google.com/search/docs/crawling-indexing/robots/intro"]
+                )
+
                 # Look for sensitive entries
-                if any(sensitive in content.lower() for sensitive in ["admin", "private", "secret", "debug"]):
+                if any(sensitive in content.lower() for sensitive in ["admin", "private", "secret", "debug", "config", "backup", ".env", ".git"]):
                     self.add_enriched_vulnerability(
                         "Sensitive Information in robots.txt",
                         "Low",
-                        "robots.txt contains sensitive information",
-                        content[:100],
-                        "Review robots.txt content",
+                        "robots.txt contains potentially sensitive paths",
+                        content[:200] + "..." if len(content) > 200 else content,
+                        "Review robots.txt content and remove references to sensitive paths if they should not be indexed.",
                         category="Information Disclosure",
                         owasp="A09:2021 - Security Logging and Monitoring Failures",
                         cwe=["CWE-200"]
@@ -648,3 +756,148 @@ class GenericWebAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                         cwe=["CWE-319"]
                     )
                 break
+
+    def _check_tls_certificate(self, url: str):
+        """Check TLS certificate validity and trust issues."""
+        from urllib.parse import urlparse
+        import ssl
+        import socket
+        from datetime import datetime
+
+        parsed = urlparse(url)
+        if parsed.scheme != "https" or not parsed.hostname:
+            return
+
+        hostname = parsed.hostname
+        port = parsed.port or 443
+
+        try:
+            # Create SSL context for certificate validation
+            context = ssl.create_default_context()
+            context.check_hostname = True
+            context.verify_mode = ssl.CERT_REQUIRED
+
+            with socket.create_connection((hostname, port), timeout=10) as sock:
+                with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                    cert = ssock.getpeercert()
+                    if not cert:
+                        self.add_enriched_vulnerability(
+                            "TLS Certificate Issues",
+                            "Medium",
+                            "No TLS certificate found or certificate validation failed.",
+                            "Certificate validation failed",
+                            "Ensure a valid TLS certificate is properly installed and trusted by clients.",
+                            category="TLS/SSL Configuration",
+                            owasp="A02:2021 - Cryptographic Failures",
+                            cwe=["CWE-295"],
+                            background="TLS certificates are essential for establishing trust between clients and servers, preventing man-in-the-middle attacks.",
+                            impact="Users may be unable to establish secure connections or may be vulnerable to interception attacks.",
+                            references=[
+                                "https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure",
+                                "https://cwe.mitre.org/data/definitions/295.html"
+                            ]
+                        )
+                        return
+
+                    # Check certificate expiry
+                    not_after = cert.get("notAfter")
+                    if not_after:
+                        try:
+                            expires_at = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
+                            days_remaining = (expires_at - datetime.utcnow()).days
+
+                            if days_remaining < 0:
+                                self.add_enriched_vulnerability(
+                                    "TLS Certificate Issues",
+                                    "Medium",
+                                    "TLS certificate has expired.",
+                                    f"Expired on {expires_at.isoformat()} ({abs(days_remaining)} days ago)",
+                                    "Renew the TLS certificate immediately and implement automated rotation.",
+                                    category="TLS/SSL Configuration",
+                                    owasp="A02:2021 - Cryptographic Failures",
+                                    cwe=["CWE-295"],
+                                    background="Expired TLS certificates prevent clients from verifying the server identity, enabling man-in-the-middle attacks.",
+                                    impact="Users cannot establish secure connections and may be exposed to interception attacks.",
+                                    references=[
+                                        "https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure",
+                                        "https://cwe.mitre.org/data/definitions/295.html"
+                                    ]
+                                )
+                            elif days_remaining < 30:
+                                self.add_enriched_vulnerability(
+                                    "TLS Certificate Issues",
+                                    "Low",
+                                    "TLS certificate is nearing expiration.",
+                                    f"Expires on {expires_at.isoformat()} ({days_remaining} days remaining)",
+                                    "Rotate the TLS certificate promptly to avoid service disruption.",
+                                    category="TLS/SSL Configuration",
+                                    owasp="A02:2021 - Cryptographic Failures",
+                                    cwe=["CWE-295"]
+                                )
+                        except ValueError:
+                            # If we can't parse the date, report it as an issue
+                            self.add_enriched_vulnerability(
+                                "TLS Certificate Issues",
+                                "Medium",
+                                "Unable to parse TLS certificate expiry date.",
+                                f"Raw expiry: {not_after}",
+                                "Ensure the TLS certificate has a valid expiry date format.",
+                                category="TLS/SSL Configuration",
+                                owasp="A02:2021 - Cryptographic Failures",
+                                cwe=["CWE-295"]
+                            )
+
+                    # Check if certificate is self-signed
+                    issuer = cert.get("issuer", [])
+                    subject = cert.get("subject", [])
+                    if issuer == subject and issuer:
+                        self.add_enriched_vulnerability(
+                            "TLS Certificate Issues",
+                            "Medium",
+                            "Self-signed TLS certificate detected.",
+                            "Certificate issuer matches subject (self-signed)",
+                            "Replace self-signed certificate with one from a trusted Certificate Authority.",
+                            category="TLS/SSL Configuration",
+                            owasp="A02:2021 - Cryptographic Failures",
+                            cwe=["CWE-295"],
+                            background="Self-signed certificates are not trusted by browsers and cannot be validated, leaving connections vulnerable to attacks.",
+                            impact="Users will see certificate warnings and connections may be intercepted.",
+                            references=[
+                                "https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure",
+                                "https://cwe.mitre.org/data/definitions/295.html"
+                            ]
+                        )
+
+        except ssl.SSLError as e:
+            # SSL-specific errors indicate certificate trust issues
+            self.add_enriched_vulnerability(
+                "TLS Certificate Issues",
+                "Medium",
+                "TLS certificate validation failed - certificate may not be trusted.",
+                str(e),
+                "Ensure the TLS certificate is issued by a trusted Certificate Authority and is properly installed.",
+                category="TLS/SSL Configuration",
+                owasp="A02:2021 - Cryptographic Failures",
+                cwe=["CWE-295"],
+                background="Untrusted TLS certificates prevent browsers from establishing secure connections, exposing users to potential attacks.",
+                impact="Users will see certificate warnings and may be unable to access the site securely.",
+                references=[
+                    "https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure",
+                    "https://cwe.mitre.org/data/definitions/295.html"
+                ]
+            )
+        except (socket.timeout, socket.error, OSError) as e:
+            # Connection issues - don't report as certificate problems
+            pass
+        except Exception as e:
+            # Other exceptions - report as general certificate issues
+            self.add_enriched_vulnerability(
+                "TLS Certificate Issues",
+                "Medium",
+                "TLS certificate problems detected.",
+                str(e),
+                "Investigate TLS certificate configuration and ensure a valid, trusted certificate is installed.",
+                category="TLS/SSL Configuration",
+                owasp="A02:2021 - Cryptographic Failures",
+                cwe=["CWE-295"]
+            )

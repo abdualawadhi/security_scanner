@@ -131,6 +131,8 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self._check_dom_data_manipulation(js_content)
         self._check_cloud_resources(js_content + "\n" + html_content)
         self._check_secret_input_header_reflection(url)
+        self._check_csrf_token_analysis(soup)
+        self._check_content_type_analysis(response)
 
         # COMPREHENSIVE VULNERABILITY DETECTION (Traditional Web Vulnerabilities)
         # Cross-Site Scripting (XSS) Detection - CRITICAL for Bubble (48 XSS instances in Burp)
@@ -1031,3 +1033,87 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     references=["https://portswigger.net/web-security/dom-based/open-redirection"],
                 )
                 break
+
+    def _check_csrf_token_analysis(self, soup: BeautifulSoup):
+        """Analyze CSRF token implementation (informational)"""
+        forms = soup.find_all('form')
+        forms_with_csrf = 0
+        forms_without_csrf = 0
+
+        csrf_patterns = [
+            r'csrf[_-]?token',
+            r'_token',
+            r'authenticity[_-]?token',
+            r'request[_-]?token',
+            r'anti[_-]?csrf',
+            r'nonce',
+        ]
+
+        for form in forms:
+            has_csrf = False
+            # Check hidden inputs
+            hidden_inputs = form.find_all('input', type='hidden')
+            for inp in hidden_inputs:
+                name = inp.get('name', '').lower()
+                if any(re.search(pattern, name) for pattern in csrf_patterns):
+                    has_csrf = True
+                    break
+
+            if has_csrf:
+                forms_with_csrf += 1
+            else:
+                forms_without_csrf += 1
+
+        # Report as informational finding
+        if forms_without_csrf > 0:
+            self.add_enriched_vulnerability(
+                "CSRF Token Analysis",
+                "Info",
+                f"Forms without CSRF protection detected: {forms_without_csrf} of {forms_with_csrf + forms_without_csrf} total forms",
+                f"Forms with CSRF: {forms_with_csrf}, Forms without CSRF: {forms_without_csrf}",
+                "Consider implementing CSRF tokens for all state-changing forms",
+                category="Cross-Site Request Forgery",
+                owasp="A01:2021 - Broken Access Control",
+                cwe=["CWE-352"],
+                background="CSRF tokens help prevent cross-site request forgery attacks by ensuring that state-changing requests originate from the legitimate application.",
+                impact="Forms without CSRF protection may be vulnerable to unauthorized state changes.",
+                references=["https://owasp.org/www-community/attacks/csrf"],
+            )
+
+    def _check_content_type_analysis(self, response: requests.Response):
+        """Analyze Content-Type header implementation (informational)"""
+        content_type = response.headers.get("Content-Type", "")
+        content_length = response.headers.get("Content-Length", "")
+
+        issues = []
+
+        # Check for missing Content-Type
+        if not content_type:
+            issues.append("Missing Content-Type header")
+
+        # Check for generic Content-Type
+        if content_type and content_type.lower() in ["application/octet-stream", "text/plain"]:
+            issues.append(f"Generic Content-Type: {content_type}")
+
+        # Check for charset specification
+        if content_type and "text/" in content_type.lower() and "charset" not in content_type.lower():
+            issues.append("Missing charset specification in text content")
+
+        # Check for conflicting Content-Type and actual content
+        if content_type and "json" in content_type.lower() and not response.text.strip().startswith(("{", "[")):
+            issues.append("Content-Type claims JSON but content doesn't appear to be JSON")
+
+        if issues:
+            self.add_enriched_vulnerability(
+                "Content-Type Analysis",
+                "Info",
+                f"Content-Type header issues detected: {', '.join(issues)}",
+                f"Content-Type: {content_type or 'Missing'}",
+                "Ensure proper Content-Type headers are set for all responses",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-173"],
+                background="Proper Content-Type headers help prevent MIME confusion attacks and ensure browsers handle content appropriately.",
+                impact="Incorrect Content-Type headers can lead to security issues like XSS through MIME confusion.",
+                references=["https://owasp.org/www-project-top-ten/2017/A6_2017-Security_Misconfiguration"],
+            )

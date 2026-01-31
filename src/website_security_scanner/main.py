@@ -151,7 +151,7 @@ class LowCodeSecurityScanner:
         return security_headers
 
     def analyze_ssl(self, url):
-        """Analyze SSL/TLS configuration"""
+        """Analyze SSL/TLS configuration and certificate issues"""
         ssl_info = {}
 
         try:
@@ -160,21 +160,83 @@ class LowCodeSecurityScanner:
             port = parsed_url.port or (443 if parsed_url.scheme == "https" else 80)
 
             if parsed_url.scheme == "https":
+                # Create SSL context for certificate validation
                 context = ssl.create_default_context()
-                context.check_hostname = False
-                context.verify_mode = ssl.CERT_NONE
+                context.check_hostname = True  # Enable hostname checking
+                context.verify_mode = ssl.CERT_REQUIRED
 
-                with socket.create_connection((hostname, port), timeout=10) as sock:
-                    with context.wrap_socket(sock, server_hostname=hostname) as ssock:
-                        cert = ssock.getpeercert()
-                        ssl_info = {
-                            "version": ssock.version(),
-                            "cipher": ssock.cipher(),
-                            "certificate_subject": cert.get("subject", []),
-                            "certificate_issuer": cert.get("issuer", []),
-                            "certificate_expiry": cert.get("notAfter", "Unknown"),
-                            "certificate_san": cert.get("subjectAltName", []),
-                        }
+                cert_issues = []
+
+                try:
+                    with socket.create_connection((hostname, port), timeout=10) as sock:
+                        with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                            cert = ssock.getpeercert()
+                            ssl_info = {
+                                "version": ssock.version(),
+                                "cipher": ssock.cipher(),
+                                "certificate_subject": cert.get("subject", []),
+                                "certificate_issuer": cert.get("issuer", []),
+                                "certificate_expiry": cert.get("notAfter", "Unknown"),
+                                "certificate_san": cert.get("subjectAltName", []),
+                            }
+
+                            # Check certificate expiry
+                            if cert.get("notAfter"):
+                                expiry_date = ssl.cert_time_to_seconds(cert["notAfter"])
+                                current_time = time.time()
+                                days_until_expiry = (expiry_date - current_time) / (24 * 3600)
+
+                                if days_until_expiry < 0:
+                                    cert_issues.append("Certificate has expired")
+                                elif days_until_expiry < 30:
+                                    cert_issues.append(f"Certificate expires in {int(days_until_expiry)} days")
+
+                            # Check if certificate is self-signed
+                            issuer = cert.get("issuer", [])
+                            subject = cert.get("subject", [])
+                            if issuer == subject:
+                                cert_issues.append("Self-signed certificate detected")
+
+                            # Check hostname validation
+                            cert_hostname = None
+                            for field in cert.get("subject", []):
+                                if field[0][0] == "commonName":
+                                    cert_hostname = field[0][1]
+                                    break
+
+                            if cert_hostname and cert_hostname != hostname and hostname not in [san[1] for san in cert.get("subjectAltName", []) if san[0] == "DNS"]:
+                                cert_issues.append("Certificate hostname mismatch")
+
+                except ssl.SSLCertVerificationError as e:
+                    cert_issues.append(f"Certificate verification failed: {str(e)}")
+                    # Try with verification disabled to get basic info
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+                    try:
+                        with socket.create_connection((hostname, port), timeout=10) as sock:
+                            with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                                cert = ssock.getpeercert()
+                                ssl_info = {
+                                    "version": ssock.version(),
+                                    "cipher": ssock.cipher(),
+                                    "certificate_subject": cert.get("subject", []),
+                                    "certificate_issuer": cert.get("issuer", []),
+                                    "certificate_expiry": cert.get("notAfter", "Unknown"),
+                                    "certificate_san": cert.get("subjectAltName", []),
+                                    "verification_errors": cert_issues
+                                }
+                    except Exception:
+                        ssl_info["error"] = f"SSL connection failed: {str(e)}"
+
+                except Exception as e:
+                    ssl_info["error"] = f"SSL analysis failed: {str(e)}"
+                    cert_issues.append(f"SSL connection error: {str(e)}")
+
+                # Add certificate issues to vulnerabilities if any found
+                if cert_issues:
+                    ssl_info["certificate_issues"] = cert_issues
+                    # This will be handled by the analyzer that calls this method
+
             else:
                 ssl_info["error"] = "Not using HTTPS"
 
