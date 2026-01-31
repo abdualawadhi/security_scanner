@@ -16,6 +16,7 @@ from .bubble import BubbleAnalyzer
 from .outsystems import OutSystemsAnalyzer
 from .airtable import AirtableAnalyzer
 from .generic import GenericWebAnalyzer
+from .low_code_scanner import LowCodePlatformScanner
 from .reports import SecurityReportGenerator
 
 
@@ -33,6 +34,8 @@ def get_analyzer_for_platform(platform_type: str, session: requests.Session) -> 
         "mern-stack": GenericWebAnalyzer,
         "generic": GenericWebAnalyzer,
         "unknown": GenericWebAnalyzer,
+        "low-code": LowCodePlatformScanner,
+        "comprehensive": LowCodePlatformScanner,
     }
     
     analyzer_class = analyzers.get(platform_type.lower(), GenericWebAnalyzer)
@@ -69,6 +72,8 @@ def get_supported_platforms() -> list:
         "outsystems", 
         "airtable.com",
         "generic",
+        "low-code",
+        "comprehensive",
     ]
 
 
@@ -123,6 +128,30 @@ def get_platform_info(platform_type: str) -> dict:
                 "Cross-site scripting",
                 "SQL injection",
                 "File upload issues",
+            ]
+        },
+        "low-code": {
+            "name": "Comprehensive Low-Code Scanner",
+            "description": "Dedicated scanner for all major low-code platforms",
+            "analyzer": "LowCodePlatformScanner",
+            "common_vulnerabilities": [
+                "Platform-specific API exposure",
+                "Authentication bypass",
+                "Data leakage",
+                "Misconfiguration",
+                "Injection vulnerabilities",
+            ]
+        },
+        "comprehensive": {
+            "name": "Comprehensive Low-Code Scanner",
+            "description": "Dedicated scanner for all major low-code platforms",
+            "analyzer": "LowCodePlatformScanner",
+            "common_vulnerabilities": [
+                "Platform-specific API exposure",
+                "Authentication bypass",
+                "Data leakage",
+                "Misconfiguration",
+                "Injection vulnerabilities",
             ]
         }
     }
