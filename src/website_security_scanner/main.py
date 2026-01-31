@@ -191,7 +191,7 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
-        analyzer.verify_vulnerabilities(url)
+        verification_summary = analyzer.verify_vulnerabilities(url)
 
         # Map BubbleAnalyzer findings to the format expected by scanner
         return {
@@ -202,6 +202,7 @@ class LowCodeSecurityScanner:
                 "privacy_rules": results.get("privacy_rules", []),
             },
             "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
         }
 
     def analyze_outsystems_app(self, url, response):
@@ -212,7 +213,7 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
-        analyzer.verify_vulnerabilities(url)
+        verification_summary = analyzer.verify_vulnerabilities(url)
 
         return {
             "outsystems_specific": {
@@ -221,6 +222,7 @@ class LowCodeSecurityScanner:
                 "entities": results.get("entities", []),
             },
             "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
         }
 
     def analyze_airtable_app(self, url, response):
@@ -231,7 +233,7 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
-        analyzer.verify_vulnerabilities(url)
+        verification_summary = analyzer.verify_vulnerabilities(url)
 
         return {
             "airtable_specific": {
@@ -240,6 +242,7 @@ class LowCodeSecurityScanner:
                 "table_structure_exposure": results.get("table_ids", []),
             },
             "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
         }
 
     def analyze_generic_app(self, url, response):
@@ -250,11 +253,12 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
-        analyzer.verify_vulnerabilities(url)
+        verification_summary = analyzer.verify_vulnerabilities(url)
 
         return {
             "generic_analysis": results.get("generic_findings", {}),
             "vulnerabilities": results.get("vulnerabilities", []),
+            "verification_summary": verification_summary,
         }
 
     def check_common_vulnerabilities(self, url, response):
