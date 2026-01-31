@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 from ..exceptions import AnalysisError
 from ..utils.logger import get_logger
 from ..utils.vulnerability_verifier import VulnerabilityVerifier
+from ..verifier import VulnerabilityVerifier
 
 
 class BaseAnalyzer:
@@ -158,6 +159,8 @@ class BaseAnalyzer:
         category: str = "General",
         owasp: str = "N/A",
         cwe: Optional[List[str]] = None,
+        parameter: str = "",
+        url: str = "",
     ):
         """
         Add a vulnerability to the findings with detailed metadata.
@@ -175,6 +178,8 @@ class BaseAnalyzer:
             category: Vulnerability category
             owasp: OWASP classification
             cwe: List of relevant CWE identifiers
+            parameter: Affected parameter name (for verification)
+            url: Target URL (for verification)
         """
         vulnerability = {
             "type": vuln_type,
@@ -186,6 +191,8 @@ class BaseAnalyzer:
             "category": category,
             "owasp": owasp,
             "cwe": cwe or [],
+            "parameter": parameter,
+            "url": url or (self._last_request.url if self._last_request else ""),
             "timestamp": self._get_timestamp(),
         }
         self.vulnerabilities.append(vulnerability)
@@ -216,6 +223,8 @@ class BaseAnalyzer:
         background: str = "",
         impact: str = "",
         references: Optional[List[str]] = None,
+        parameter: str = "",
+        url: str = "",
     ):
         """
         Add enriched vulnerability with comprehensive metadata and HTTP context.
@@ -237,6 +246,8 @@ class BaseAnalyzer:
             background: Background information about the vulnerability type
             impact: Detailed impact analysis
             references: List of reference URLs for more information
+            parameter: Affected parameter name (for verification)
+            url: Target URL (for verification)
         """
         # Handle evidence parameter - can be string, dict, or list
         if isinstance(evidence, (dict, list)):
@@ -257,6 +268,8 @@ class BaseAnalyzer:
             category,
             owasp,
             cwe,
+            parameter,
+            url,
         )
         
         # Enhance the last added vulnerability with enriched metadata
@@ -509,3 +522,77 @@ class BaseAnalyzer:
         )
         
         return verification_summary
+    def verify_vulnerabilities(self, base_url: str):
+        """
+        Perform active verification of detected vulnerabilities.
+        
+        This method uses the VulnerabilityVerifier to test and confirm
+        the exploitability of detected vulnerabilities through controlled
+        active testing.
+        
+        Args:
+            base_url: Base URL of the target application for verification testing
+            
+        Returns:
+            List of verification results for each vulnerability
+        """
+        if not self.vulnerabilities:
+            self.logger.info("No vulnerabilities to verify")
+            return []
+        
+        self.logger.info(f"Starting verification of {len(self.vulnerabilities)} vulnerabilities")
+        
+        verifier = VulnerabilityVerifier(self.session)
+        verification_results = []
+        
+        for i, vulnerability in enumerate(self.vulnerabilities):
+            try:
+                self.logger.info(f"Verifying vulnerability {i+1}/{len(self.vulnerabilities)}: {vulnerability.get('type', 'Unknown')}")
+                
+                # Prepare vulnerability data for verification
+                vuln_data = {
+                    'type': vulnerability.get('type', ''),
+                    'url': vulnerability.get('url', base_url),
+                    'parameter': vulnerability.get('parameter', ''),
+                    'severity': vulnerability.get('severity', 'Medium'),
+                    'confidence': vulnerability.get('confidence', 'tentative'),
+                }
+                
+                # Perform verification
+                result = verifier.verify_vulnerability(vuln_data)
+                
+                # Update vulnerability with verification results
+                vulnerability['verification'] = result
+                
+                # Update confidence based on verification
+                if result.get('verified', False):
+                    vulnerability['confidence'] = result.get('confidence', 'certain')
+                    vulnerability['verified'] = True
+                    vulnerability['verification_evidence'] = result.get('evidence', '')
+                    vulnerability['verification_method'] = result.get('method', 'active_testing')
+                    
+                    self.logger.warning(
+                        f"Vulnerability VERIFIED: {vulnerability.get('type')} ({vulnerability.get('severity')}) - {result.get('evidence', '')}"
+                    )
+                else:
+                    vulnerability['verified'] = False
+                    vulnerability['verification_reason'] = result.get('reason', 'Could not verify')
+                    
+                    self.logger.info(
+                        f"Vulnerability NOT verified: {vulnerability.get('type')} - {result.get('reason', '')}"
+                    )
+                
+                verification_results.append(result)
+                
+            except Exception as e:
+                self.logger.error(f"Error verifying vulnerability {vulnerability.get('type')}: {e}")
+                vulnerability['verification_error'] = str(e)
+                verification_results.append({
+                    'verified': False,
+                    'error': str(e),
+                    'vulnerability_type': vulnerability.get('type', 'Unknown')
+                })
+        
+        self.logger.info(f"Verification complete. {sum(1 for r in verification_results if r.get('verified'))}/{len(verification_results)} vulnerabilities confirmed")
+        
+        return verification_results

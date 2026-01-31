@@ -23,7 +23,7 @@ from flask_cors import CORS
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from website_security_scanner.main import LowCodeSecurityScanner
-from website_security_scanner.report_generator import ProfessionalReportGenerator
+from website_security_scanner.enhanced_report_generator import EnhancedReportGenerator
 from website_security_scanner.result_transformer import transform_results_for_professional_report
 from website_security_scanner.verifier import VulnerabilityVerifier
 
@@ -65,7 +65,7 @@ def create_app(config=None):
     
     # Initialize scanner components
     app.scanner = LowCodeSecurityScanner()
-    app.report_generator = ProfessionalReportGenerator()
+    app.report_generator = EnhancedReportGenerator()
     app.verifier = VulnerabilityVerifier(app.scanner.session)
     
     # Scan queue and history
