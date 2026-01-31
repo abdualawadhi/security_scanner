@@ -189,6 +189,21 @@ class SecurityScannerCLI:
         elif ssl_info and "error" in ssl_info:
             self.print_status(f"SSL/TLS issues: {ssl_info['error']}", "warning")
 
+        # Verification Summary
+        verification_summary = result.get("verification_summary", {})
+        if verification_summary:
+            total_vulns = verification_summary.get("total_vulnerabilities", 0)
+            verified_vulns = verification_summary.get("verified_vulnerabilities", 0)
+            verification_rate = verification_summary.get("verification_rate", 0)
+
+            if total_vulns > 0:
+                print(f"\n{Fore.CYAN}Vulnerability Verification:{Style.RESET_ALL}")
+                print(f"  Total: {total_vulns}")
+                print(f"  Verified: {Fore.GREEN}{verified_vulns}{Style.RESET_ALL}")
+                print(f"  Verification Rate: {verification_rate}%")
+            else:
+                print(f"\n{Fore.CYAN}Vulnerability Verification:{Style.RESET_ALL} No vulnerabilities to verify")
+
         print()
 
     def save_results(self, results: Any, output_file: str, format: str = "json"):

@@ -215,3 +215,7 @@ class SecurityStandards:
         threshold = threshold_map.get(self.asvs_level, 1)
         
         return severity_value >= threshold
+
+
+# Default configuration instance for use throughout the application
+config = ScannerConfig()

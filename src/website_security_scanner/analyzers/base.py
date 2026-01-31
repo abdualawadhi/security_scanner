@@ -19,6 +19,7 @@ from bs4 import BeautifulSoup
 
 from ..exceptions import AnalysisError
 from ..utils.logger import get_logger
+from ..utils.vulnerability_verifier import VulnerabilityVerifier
 from ..verifier import VulnerabilityVerifier
 
 
@@ -407,6 +408,120 @@ class BaseAnalyzer:
         
         return breakdown
 
+    def verify_vulnerabilities(self, url: str) -> Dict[str, Any]:
+        """
+        Actively verify detected vulnerabilities using safe payload testing.
+        
+        This method integrates with the VulnerabilityVerifier to confirm that
+        detected vulnerabilities are actually exploitable. It performs safe
+        exploitation attempts and updates confidence levels based on verification results.
+        
+        Args:
+            url: Target URL being analyzed
+            
+        Returns:
+            Dictionary containing verification summary statistics
+        """
+        if not self.vulnerabilities:
+            self.logger.info("No vulnerabilities to verify")
+            return {
+                "total_vulnerabilities": 0,
+                "verified_vulnerabilities": 0,
+                "high_confidence_verifications": 0,
+                "verification_rate": 0.0
+            }
+        
+        # Initialize vulnerability verifier
+        verifier = VulnerabilityVerifier(self.session)
+        
+        # Get the last response if available for verification context
+        response = self._last_response if self._last_response else None
+        
+        verified_count = 0
+        high_confidence_count = 0
+        
+        self.logger.info(f"Starting active verification for {len(self.vulnerabilities)} vulnerabilities")
+        
+        for i, vuln in enumerate(self.vulnerabilities):
+            vuln_type = vuln.get('type', '')
+            
+            # Skip verification for certain vulnerability types that don't benefit from active testing
+            skip_types = [
+                'Missing Security Header',
+                'SSL/TLS Issue',
+                'Information Disclosure',
+                'Cookie Security',
+                'Session Token in URL'
+            ]
+            
+            if any(skip_type in vuln_type for skip_type in skip_types):
+                # Mark as pattern match only
+                vuln['verification'] = {
+                    'verified': False,
+                    'confidence': 'medium',
+                    'method': 'pattern_match_only',
+                    'note': 'This vulnerability type is verified via static analysis only'
+                }
+                continue
+            
+            # Perform active verification for exploitable vulnerabilities
+            try:
+                if response:
+                    verified_vuln = verifier.verify_vulnerability(vuln, url, response)
+                else:
+                    # If no response available, mark as unable to verify
+                    verified_vuln = vuln.copy()
+                    verified_vuln['verification'] = {
+                        'verified': False,
+                        'confidence': 'low',
+                        'method': 'no_context',
+                        'note': 'No HTTP response available for verification'
+                    }
+                
+                # Update vulnerability with verification results
+                self.vulnerabilities[i] = verified_vuln
+                
+                # Track verification statistics
+                verification = verified_vuln.get('verification', {})
+                if verification.get('verified', False):
+                    verified_count += 1
+                    high_confidence_count += 1
+                    
+                    # Update confidence level to Certain for verified vulnerabilities
+                    self.vulnerabilities[i]['confidence'] = 'Certain'
+                    self.logger.info(f"✓ Verified: {vuln_type}")
+                else:
+                    confidence = verification.get('confidence', 'low')
+                    if confidence == 'high':
+                        high_confidence_count += 1
+                    self.logger.debug(f"✗ Unverified: {vuln_type} (confidence: {confidence})")
+                
+            except Exception as e:
+                self.logger.error(f"Verification failed for {vuln_type}: {str(e)}")
+                self.vulnerabilities[i]['verification'] = {
+                    'verified': False,
+                    'confidence': 'unknown',
+                    'error': str(e),
+                    'method': 'failed'
+                }
+        
+        # Calculate verification statistics
+        total_vulns = len(self.vulnerabilities)
+        verification_rate = (verified_count / total_vulns * 100) if total_vulns > 0 else 0.0
+        
+        verification_summary = {
+            'total_vulnerabilities': total_vulns,
+            'verified_vulnerabilities': verified_count,
+            'high_confidence_verifications': high_confidence_count,
+            'verification_rate': round(verification_rate, 2)
+        }
+        
+        self.logger.info(
+            f"Verification complete: {verified_count}/{total_vulns} verified "
+            f"({verification_rate:.2f}% verification rate)"
+        )
+        
+        return verification_summary
     def verify_vulnerabilities(self, base_url: str):
         """
         Perform active verification of detected vulnerabilities.

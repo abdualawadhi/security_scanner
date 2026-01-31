@@ -724,7 +724,28 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             if v.get('impact'):
                 out.append('<h2>Impact</h2>')
                 out.append(f"<span class=\"TEXT\">{v['impact']}</span>")
-            
+
+            # Verification Information
+            verification = v.get('verification', {})
+            if verification:
+                out.append('<h2>Vulnerability Verification</h2>')
+                verified = verification.get('verified', False)
+                verified_status = "✓ Verified" if verified else "✗ Not Verified"
+                confidence = verification.get('confidence', 'unknown').capitalize()
+                method = verification.get('method', 'unknown')
+                out.append(f"<span class=\"TEXT\"><b>Status:</b> {verified_status}<br>")
+                out.append(f"<b>Confidence:</b> {confidence}<br>")
+                out.append(f"<b>Method:</b> {method.replace('_', ' ').title()}</span>")
+
+                if verification.get('note'):
+                    out.append(f"<br><span class=\"TEXT\">{verification['note']}</span>")
+
+                if verification.get('payload_used'):
+                    out.append(f"<br><span class=\"TEXT\"><b>Test Payload:</b> <code>{verification['payload_used']}</code></span>")
+
+                if verification.get('error'):
+                    out.append(f"<br><span class=\"TEXT\" style=\"color: red;\"><b>Verification Error:</b> {verification['error']}</span>")
+
             # References
             if v.get('references'):
                 out.append('<h2>References</h2>')
