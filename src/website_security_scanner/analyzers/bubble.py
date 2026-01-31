@@ -4,20 +4,30 @@ Bubble.io Security Analyzer
 Low-Code Platform Security Scanner
 
 Specialized analyzer for Bubble.io applications with platform-specific
-vulnerability detection.
+vulnerability detection and comprehensive traditional web vulnerability
+scanning (XSS, SQLi, CSRF, Open Redirect, etc.).
 
 Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 """
 
 import re
+import socket
+import ssl
+from datetime import datetime
 from typing import Any, Dict, List
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .vulnerability_detection import (
+    XSSDetector,
+    SQLInjectionDetector,
+    CSRFDetector,
+    OpenRedirectDetector,
+)
 from ..utils.evidence_builder import EvidenceBuilder
 
 
@@ -42,6 +52,12 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self.workflow_patterns: List[Dict[str, Any]] = []
         self.database_schemas: List[Dict[str, Any]] = []
         self.privacy_rules: List[Dict[str, Any]] = []
+        
+        # Initialize vulnerability detectors
+        self.xss_detector = XSSDetector(session)
+        self.sqli_detector = SQLInjectionDetector(session)
+        self.csrf_detector = CSRFDetector(session)
+        self.redirect_detector = OpenRedirectDetector(session)
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
@@ -102,6 +118,10 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self._check_content_type_options(response)
         self._check_vulnerable_dependencies(js_content)
         self._check_robots_txt(url)
+        self._check_security_headers_informational(response)
+        self._check_tls_certificate(url)
+        self._check_stripe_public_keys(js_content)
+        self._check_dom_open_redirect(js_content, url)
 
         # NEW ENHANCED CHECKS - Bubble missing vulnerabilities
         self._check_http2_support(url)
@@ -111,6 +131,202 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self._check_dom_data_manipulation(js_content)
         self._check_cloud_resources(js_content + "\n" + html_content)
         self._check_secret_input_header_reflection(url)
+
+        # COMPREHENSIVE VULNERABILITY DETECTION (Traditional Web Vulnerabilities)
+        # Cross-Site Scripting (XSS) Detection - CRITICAL for Bubble (48 XSS instances in Burp)
+        xss_vulns = self.xss_detector.detect_reflected_xss(url, response, html_content)
+        for vuln in xss_vulns:
+            evidence = f"Parameter: {vuln['parameter']}, Context: {vuln['context']}"
+            self.add_enriched_vulnerability(
+                vuln['type'],
+                vuln['severity'],
+                f"{vuln['type']} detected in parameter '{vuln['parameter']}'",
+                evidence,
+                "Implement output encoding, input validation, and Content Security Policy",
+                category="Cross-Site Scripting",
+                owasp="A03:2021 - Injection",
+                cwe=["CWE-79"],
+                background="Cross-Site Scripting (XSS) occurs when untrusted data is included in web pages without proper validation or escaping, allowing attackers to execute malicious scripts in victims' browsers.",
+                impact="XSS can lead to session hijacking, defacement, malware distribution, data theft, and credential harvesting. Attackers can impersonate users, perform actions on their behalf, and steal sensitive data.",
+                references=[
+                    "https://owasp.org/www-community/attacks/xss/",
+                    "https://cwe.mitre.org/data/definitions/79.html",
+                    "https://portswigger.net/web-security/cross-site-scripting"
+                ]
+            )
+
+        # DOM-based XSS Detection
+        dom_xss_vulns = self.xss_detector.detect_dom_xss(url, js_content)
+        for vuln in dom_xss_vulns:
+            evidence = f"Source: {vuln['source']}, Sink: {vuln['sink']}"
+            self.add_enriched_vulnerability(
+                vuln['type'],
+                vuln['severity'],
+                f"{vuln['type']} detected via DOM manipulation",
+                evidence,
+                "Avoid using dangerous DOM sinks with user-controlled data; use safe DOM APIs and validate input",
+                category="Cross-Site Scripting",
+                owasp="A03:2021 - Injection",
+                cwe=["CWE-79"],
+                background="DOM-based XSS vulnerabilities occur when the DOM is modified in an unsafe way using untrusted data from sources like location.hash or document.URL.",
+                impact="DOM-based XSS is particularly dangerous as it bypasses server-side protections. Attackers can execute arbitrary JavaScript in the victim's browser context.",
+                references=[
+                    "https://owasp.org/www-community/attacks/DOM_Based_XSS",
+                    "https://portswigger.net/web-security/cross-site-scripting/dom-based"
+                ]
+            )
+
+        # SQL Injection Detection
+        sqli_vulns = self.sqli_detector.detect_sql_injection(url, response)
+        for vuln in sqli_vulns:
+            if vuln['type'] == 'SQL Injection':
+                evidence = f"Parameter: {vuln.get('parameter', 'unknown')}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability detected in parameter '{vuln.get('parameter', 'unknown')}'",
+                    evidence,
+                    "Use parameterized queries, prepared statements, and input validation. Never concatenate user input into SQL queries.",
+                    category="Injection",
+                    owasp="A03:2021 - Injection",
+                    cwe=["CWE-89"],
+                    background="SQL Injection occurs when untrusted user input is included in SQL queries without proper sanitization, allowing attackers to manipulate database queries.",
+                    impact="SQL injection can lead to data breaches, data loss, authentication bypass, privilege escalation, and in severe cases, complete server compromise.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/SQL_Injection",
+                        "https://cwe.mitre.org/data/definitions/89.html",
+                        "https://portswigger.net/web-security/sql-injection"
+                    ]
+                )
+            elif vuln['type'] == 'SQL Error Disclosure':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Database error messages are being disclosed to users",
+                    "SQL error patterns found in response",
+                    "Configure database error handling to display generic messages to users. Log detailed errors server-side.",
+                    category="Information Disclosure",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-209"],
+                    background="SQL error messages can reveal database structure, table names, column names, and implementation details to attackers.",
+                    impact="SQL error disclosure assists attackers in crafting more precise SQL injection attacks and understanding the database schema.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/209.html",
+                        "https://owasp.org/www-project-web-security-testing-guide/"
+                    ]
+                )
+
+        # CSRF Detection
+        csrf_vulns = self.csrf_detector.detect_csrf(url, response, soup)
+        for vuln in csrf_vulns:
+            if vuln['type'] == 'Cross-Site Request Forgery (CSRF)':
+                evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Missing: {vuln['missing_protection']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability in form {vuln['form_index']}",
+                    evidence,
+                    "Implement anti-CSRF tokens in all state-changing forms. Verify SameSite cookie attributes. Use CSRF protection headers.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="CSRF attacks force authenticated users to execute unwanted actions on a web application without their consent.",
+                    impact="CSRF can lead to unauthorized transactions, password changes, email modifications, data deletion, and privilege escalation.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/csrf",
+                        "https://cwe.mitre.org/data/definitions/352.html",
+                        "https://portswigger.net/web-security/csrf"
+                    ]
+                )
+            elif vuln['type'] == 'Weak CSRF Protection':
+                evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Issue: {vuln['issue']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} in form {vuln['form_index']}",
+                    evidence,
+                    "Implement SameSite=Strict or SameSite=Lax cookies. Use double-submit cookie pattern or custom CSRF tokens.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="Weak CSRF protection may not prevent all CSRF attack vectors, especially in cross-origin scenarios.",
+                    impact="Weak CSRF protection can still allow attackers to perform unauthorized actions on behalf of authenticated users, compromising data integrity.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/csrf",
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite"
+                    ]
+                )
+            elif vuln['type'] == 'API CSRF Vulnerability':
+                evidence = f"Method: {vuln['method']}, Issue: {vuln['issue']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} in API endpoint",
+                    evidence,
+                    "Implement CSRF tokens, verify Origin/Referer headers, or use custom headers like X-Requested-With for state-changing API calls.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="API endpoints may be vulnerable to CSRF if they don't implement proper CSRF protection mechanisms.",
+                    impact="API CSRF vulnerabilities can lead to unauthorized API calls, data modification, and privilege escalation. This is critical for Bubble's API endpoints.",
+                    references=[
+                        "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
+                    ]
+                )
+
+        # Open Redirect Detection - CRITICAL for Bubble (102 instances in Burp)
+        redirect_vulns = self.redirect_detector.detect_open_redirect(url, response, soup)
+        for vuln in redirect_vulns:
+            if vuln['type'] == 'Open Redirect':
+                evidence = f"Parameter: {vuln['parameter']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability detected in parameter '{vuln['parameter']}'",
+                    evidence,
+                    "Validate and whitelist redirect URLs. Use relative URLs where possible. Avoid using user input for redirect destinations.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="Open redirect vulnerabilities occur when an application accepts user-controllable input that specifies a redirect URL without proper validation.",
+                    impact="Attackers can redirect users to phishing sites, malware distribution, or malicious content, bypassing URL filtering and trust indicators. This is particularly dangerous for applications with authentication flows.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html",
+                        "https://owasp.org/www-project-web-security-testing-guide/"
+                    ]
+                )
+            elif vuln['type'] == 'Open Redirect via Meta Refresh':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Open redirect via meta refresh tag detected",
+                    "Meta refresh with user-controlled URL parameter",
+                    "Validate redirect URLs before using them in meta refresh tags. Use server-side redirects with proper validation.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="Meta refresh tags can be abused for open redirect attacks if they incorporate user-controlled input.",
+                    impact="Similar to standard open redirects, this can be used for phishing and malware distribution, exploiting user trust.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html"
+                    ]
+                )
+            elif vuln['type'] == 'Potential Open Redirect via JavaScript':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Potential open redirect via JavaScript detected",
+                    "JavaScript redirect code with user input",
+                    "Review JavaScript redirect code to ensure URLs are validated and sanitized before use.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="JavaScript-based redirects can be exploited for phishing if they incorporate user-controlled input without validation.",
+                    impact="Attackers can craft malicious URLs that redirect victims to phishing sites or malicious content, exploiting user trust.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html"
+                    ]
+                )
 
         return {
             "api_endpoints": self.api_endpoints,
@@ -373,18 +589,46 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
     def _check_cookie_security(self, response: requests.Response):
         """Check cookie security headers"""
-        cookies = response.headers.get("Set-Cookie", "")
-        if "Secure" not in cookies:
-            self.add_enriched_vulnerability(
-                "Insecure Cookie",
-                "Medium",
-                "Cookie lacks Secure flag",
-                cookies[:50],
-                "Set Secure flag for cookies",
-                category="Session Management",
-                owasp="A05:2021 - Security Misconfiguration",
-                cwe=["CWE-614"]
-            )
+        cookies = self._get_set_cookie_headers(response)
+
+        for cookie in cookies:
+            cookie_name = cookie.split("=")[0] if "=" in cookie else "Unknown"
+
+            if "Secure" not in cookie:
+                self.add_enriched_vulnerability(
+                    "Insecure Cookie (Missing Secure Flag)",
+                    "Medium",
+                    f"Cookie '{cookie_name}' lacks Secure flag",
+                    cookie[:100],
+                    "Set the 'Secure' flag for all cookies to ensure they are only transmitted over HTTPS.",
+                    category="Session Management",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-614"]
+                )
+
+            if "HttpOnly" not in cookie:
+                self.add_enriched_vulnerability(
+                    "Cookie without HttpOnly Flag",
+                    "Low",
+                    f"Cookie '{cookie_name}' lacks HttpOnly flag",
+                    cookie[:100],
+                    "Set the 'HttpOnly' flag for all cookies to prevent them from being accessed by client-side scripts.",
+                    category="Session Management",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-1004"]
+                )
+
+            if "SameSite" not in cookie:
+                self.add_enriched_vulnerability(
+                    "Cookie without SameSite Attribute",
+                    "Low",
+                    f"Cookie '{cookie_name}' lacks SameSite attribute",
+                    cookie[:100],
+                    "Set the 'SameSite' attribute (Lax or Strict) for all cookies to protect against CSRF attacks.",
+                    category="Session Management",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-1275"]
+                )
 
     def _check_csp_policy(self, response: requests.Response):
         """Check Content Security Policy"""
@@ -578,25 +822,38 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
     def _check_vulnerable_dependencies(self, js_content: str):
         """Check for potentially vulnerable dependencies"""
         library_patterns = [
-            r'jquery[-.]?(\d+\.[\d\.]+)',
-            r'bootstrap[-.]?(\d+\.[\d\.]+)',
-            r'angular[-.]?(\d+\.[\d\.]+)',
+            (r'jquery[-.]?(\d+\.[\d\.]+)', "jQuery"),
+            (r'bootstrap[-.]?(\d+\.[\d\.]+)', "Bootstrap"),
+            (r'angular[-.]?(\d+\.[\d\.]+)', "Angular"),
         ]
 
-        for pattern in library_patterns:
+        for pattern, library in library_patterns:
             matches = re.findall(pattern, js_content, re.IGNORECASE)
             for version in matches:
-                # This is a simplified check - in practice, you'd use a vulnerability database
-                if version.startswith(("1.", "2.", "3.")):  # Older versions
+                severity = "Low"
+                vuln_type = "Potentially Vulnerable Dependency"
+                description = f"Old {library} version detected: {version}"
+                if library.lower() == "jquery":
+                    severity = "Medium"
+                    vuln_type = "Outdated jQuery Version"
+                    description = f"Outdated jQuery version detected: {version}"
+
+                if version.startswith(("1.", "2.", "3.")):
                     self.add_enriched_vulnerability(
-                        "Potentially Vulnerable Dependency",
-                        "Low",
-                        f"Old library version detected: {version}",
+                        vuln_type,
+                        severity,
+                        description,
                         version,
-                        "Update to latest stable version",
+                        "Update to the latest stable version of the library and monitor for security patches.",
                         category="Vulnerable Components",
                         owasp="A06:2021 - Vulnerable and Outdated Components",
-                        cwe=["CWE-937"]
+                        cwe=["CWE-1104"],
+                        background="Outdated third-party JavaScript libraries can contain known vulnerabilities that attackers exploit for XSS, prototype pollution, or other client-side attacks.",
+                        impact="Using vulnerable libraries can lead to client-side compromise, data exposure, and malware injection. Attackers often target outdated jQuery versions for DOM-based XSS.",
+                        references=[
+                            "https://owasp.org/Top10/A06_2021-Vulnerable_and_Outdated_Components/",
+                            "https://cwe.mitre.org/data/definitions/1104.html"
+                        ]
                     )
 
     def _check_robots_txt(self, url: str):
@@ -621,3 +878,156 @@ class BubbleAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     )
         except Exception:
             pass
+
+    def _check_security_headers_informational(self, response: requests.Response):
+        """Check for missing security headers (informational)."""
+        headers_to_check = [
+            ("X-Frame-Options", "Low"),
+            ("X-Content-Type-Options", "Low"),
+            ("Content-Security-Policy", "Low"),
+            ("Referrer-Policy", "Low"),
+            ("Permissions-Policy", "Info"),
+            ("X-Permitted-Cross-Domain-Policies", "Info"),
+        ]
+
+        for header, severity in headers_to_check:
+            if header not in response.headers:
+                self.add_enriched_vulnerability(
+                    f"Missing {header} Header",
+                    severity,
+                    f"The {header} security header is missing",
+                    "",
+                    f"Implement the {header} header to enhance security.",
+                    category="Security Headers",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-16"],
+                )
+
+    def _check_tls_certificate(self, url: str):
+        """Check TLS certificate validity and expiration."""
+        parsed = urlparse(url)
+        if parsed.scheme != "https" or not parsed.hostname:
+            return
+
+        hostname = parsed.hostname
+        port = parsed.port or 443
+
+        try:
+            context = ssl.create_default_context()
+            with socket.create_connection((hostname, port), timeout=6) as sock:
+                with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                    cert = ssock.getpeercert()
+                    if not cert:
+                        raise ValueError("No certificate data returned")
+
+                    not_after = cert.get("notAfter")
+                    if not not_after:
+                        raise ValueError("Certificate expiry not found")
+
+                    expires_at = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
+                    days_remaining = (expires_at - datetime.utcnow()).days
+
+                    if days_remaining < 0:
+                        self.add_enriched_vulnerability(
+                            "TLS Certificate Issues",
+                            "Medium",
+                            "TLS certificate has expired.",
+                            f"Expired on {expires_at.isoformat()} ({days_remaining} days)",
+                            "Renew the TLS certificate and ensure automated rotation before expiration.",
+                            category="TLS/SSL Configuration",
+                            owasp="A02:2021 - Cryptographic Failures",
+                            cwe=["CWE-295"],
+                            background="Expired TLS certificates prevent clients from verifying the server identity, enabling man-in-the-middle attacks.",
+                            impact="Users may be exposed to interception or be unable to establish secure connections.",
+                            references=["https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"],
+                        )
+                    elif days_remaining < 14:
+                        self.add_enriched_vulnerability(
+                            "TLS Certificate Issues",
+                            "Medium",
+                            "TLS certificate is nearing expiration.",
+                            f"Expires on {expires_at.isoformat()} ({days_remaining} days)",
+                            "Rotate the TLS certificate promptly to avoid service disruption.",
+                            category="TLS/SSL Configuration",
+                            owasp="A02:2021 - Cryptographic Failures",
+                            cwe=["CWE-295"],
+                        )
+        except Exception as exc:
+            self.add_enriched_vulnerability(
+                "TLS Certificate Issues",
+                "Medium",
+                "TLS certificate problems detected.",
+                str(exc),
+                "Investigate TLS certificate configuration and ensure a valid, trusted certificate is installed.",
+                category="TLS/SSL Configuration",
+                owasp="A02:2021 - Cryptographic Failures",
+                cwe=["CWE-295"],
+            )
+
+    def _check_stripe_public_keys(self, js_content: str):
+        """Detect exposed Stripe publishable keys."""
+        patterns = [
+            r"pk_live_[0-9a-zA-Z]{16,}",
+            r"pk_test_[0-9a-zA-Z]{16,}",
+            r"stripe_public_key_live\"?\s*[:=]\s*\"(pk_[^\"]+)\"",
+        ]
+
+        matches = set()
+        for pattern in patterns:
+            for match in re.findall(pattern, js_content, re.IGNORECASE):
+                key = match if isinstance(match, str) else "".join(match)
+                if key:
+                    matches.add(key)
+
+        for key in sorted(matches):
+            severity = "Medium" if key.startswith("pk_test_") else "High"
+            self.add_enriched_vulnerability(
+                "Stripe Public Key Exposure",
+                severity,
+                "Stripe publishable key exposed in client-side JavaScript.",
+                key,
+                "Remove hardcoded payment keys from client-side code. Load publishable keys from secure configuration and monitor for misuse.",
+                category="Information Disclosure",
+                owasp="A02:2021 - Cryptographic Failures",
+                cwe=["CWE-200"],
+                background="Publishable payment keys should be scoped and monitored. Exposure can indicate weak secret management practices.",
+                impact="Attackers can abuse exposed keys to enumerate payment configuration or mount phishing attacks.",
+                references=["https://stripe.com/docs/keys"],
+            )
+
+    def _check_dom_open_redirect(self, js_content: str, url: str):
+        """Detect DOM-based open redirect patterns."""
+        patterns = [
+            r"location\.href\s*=\s*[^;]+",
+            r"window\.location\s*=\s*[^;]+",
+            r"location\.assign\s*\(",
+            r"location\.replace\s*\(",
+        ]
+        sources = [
+            r"location\.search",
+            r"location\.hash",
+            r"document\.referrer",
+            r"document\.url",
+            r"document\.location",
+        ]
+
+        source_hits = any(re.search(source, js_content, re.IGNORECASE) for source in sources)
+        if not source_hits:
+            return
+
+        for pattern in patterns:
+            if re.search(pattern, js_content, re.IGNORECASE):
+                self.add_enriched_vulnerability(
+                    "DOM-based Open Redirect",
+                    "Medium",
+                    "Client-side code performs redirects using user-controllable DOM sources.",
+                    "DOM sources (location/search/referrer) combined with redirect sinks detected",
+                    "Validate redirect destinations and avoid using user-controlled data for navigation.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="DOM-based open redirects occur when client-side scripts use untrusted input to set window.location values.",
+                    impact="Attackers can craft links that redirect users to phishing or malware sites.",
+                    references=["https://portswigger.net/web-security/dom-based/open-redirection"],
+                )
+                break

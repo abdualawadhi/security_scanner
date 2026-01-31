@@ -53,7 +53,7 @@ Press Ctrl+C to stop the server
 """)
     
     # Create and run app
-    app = create_app()
+    app, socketio = create_app()
     socketio.run(
         app,
         host=args.host,

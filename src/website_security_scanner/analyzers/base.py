@@ -19,7 +19,6 @@ from bs4 import BeautifulSoup
 
 from ..exceptions import AnalysisError
 from ..utils.logger import get_logger
-from ..utils.vulnerability_verifier import VulnerabilityVerifier
 from ..verifier import VulnerabilityVerifier
 
 
@@ -466,23 +465,13 @@ class BaseAnalyzer:
             
             # Perform active verification for exploitable vulnerabilities
             try:
-                if response:
-                    verified_vuln = verifier.verify_vulnerability(vuln, url, response)
-                else:
-                    # If no response available, mark as unable to verify
-                    verified_vuln = vuln.copy()
-                    verified_vuln['verification'] = {
-                        'verified': False,
-                        'confidence': 'low',
-                        'method': 'no_context',
-                        'note': 'No HTTP response available for verification'
-                    }
+                verification_result = verifier.verify_vulnerability(vuln)
                 
                 # Update vulnerability with verification results
-                self.vulnerabilities[i] = verified_vuln
+                self.vulnerabilities[i]['verification'] = verification_result
                 
                 # Track verification statistics
-                verification = verified_vuln.get('verification', {})
+                verification = verification_result
                 if verification.get('verified', False):
                     verified_count += 1
                     high_confidence_count += 1
@@ -522,77 +511,3 @@ class BaseAnalyzer:
         )
         
         return verification_summary
-    def verify_vulnerabilities(self, base_url: str):
-        """
-        Perform active verification of detected vulnerabilities.
-        
-        This method uses the VulnerabilityVerifier to test and confirm
-        the exploitability of detected vulnerabilities through controlled
-        active testing.
-        
-        Args:
-            base_url: Base URL of the target application for verification testing
-            
-        Returns:
-            List of verification results for each vulnerability
-        """
-        if not self.vulnerabilities:
-            self.logger.info("No vulnerabilities to verify")
-            return []
-        
-        self.logger.info(f"Starting verification of {len(self.vulnerabilities)} vulnerabilities")
-        
-        verifier = VulnerabilityVerifier(self.session)
-        verification_results = []
-        
-        for i, vulnerability in enumerate(self.vulnerabilities):
-            try:
-                self.logger.info(f"Verifying vulnerability {i+1}/{len(self.vulnerabilities)}: {vulnerability.get('type', 'Unknown')}")
-                
-                # Prepare vulnerability data for verification
-                vuln_data = {
-                    'type': vulnerability.get('type', ''),
-                    'url': vulnerability.get('url', base_url),
-                    'parameter': vulnerability.get('parameter', ''),
-                    'severity': vulnerability.get('severity', 'Medium'),
-                    'confidence': vulnerability.get('confidence', 'tentative'),
-                }
-                
-                # Perform verification
-                result = verifier.verify_vulnerability(vuln_data)
-                
-                # Update vulnerability with verification results
-                vulnerability['verification'] = result
-                
-                # Update confidence based on verification
-                if result.get('verified', False):
-                    vulnerability['confidence'] = result.get('confidence', 'certain')
-                    vulnerability['verified'] = True
-                    vulnerability['verification_evidence'] = result.get('evidence', '')
-                    vulnerability['verification_method'] = result.get('method', 'active_testing')
-                    
-                    self.logger.warning(
-                        f"Vulnerability VERIFIED: {vulnerability.get('type')} ({vulnerability.get('severity')}) - {result.get('evidence', '')}"
-                    )
-                else:
-                    vulnerability['verified'] = False
-                    vulnerability['verification_reason'] = result.get('reason', 'Could not verify')
-                    
-                    self.logger.info(
-                        f"Vulnerability NOT verified: {vulnerability.get('type')} - {result.get('reason', '')}"
-                    )
-                
-                verification_results.append(result)
-                
-            except Exception as e:
-                self.logger.error(f"Error verifying vulnerability {vulnerability.get('type')}: {e}")
-                vulnerability['verification_error'] = str(e)
-                verification_results.append({
-                    'verified': False,
-                    'error': str(e),
-                    'vulnerability_type': vulnerability.get('type', 'Unknown')
-                })
-        
-        self.logger.info(f"Verification complete. {sum(1 for r in verification_results if r.get('verified'))}/{len(verification_results)} vulnerabilities confirmed")
-        
-        return verification_results

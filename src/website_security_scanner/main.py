@@ -49,7 +49,7 @@ class LowCodeSecurityScanner:
         )
         self.results = {}
 
-    def scan_target(self, url):
+    def scan_target(self, url, verify_vulnerabilities=True):
         """Main scanning function for a target URL"""
         print(f"\n[+] Starting security scan for: {url}")
 
@@ -85,13 +85,13 @@ class LowCodeSecurityScanner:
 
             # Content analysis based on platform type
             if target_results["platform_type"] == "bubble":
-                target_results.update(self.analyze_bubble_app(url, response))
+                target_results.update(self.analyze_bubble_app(url, response, verify_vulnerabilities))
             elif target_results["platform_type"] == "outsystems":
-                target_results.update(self.analyze_outsystems_app(url, response))
+                target_results.update(self.analyze_outsystems_app(url, response, verify_vulnerabilities))
             elif target_results["platform_type"] == "airtable":
-                target_results.update(self.analyze_airtable_app(url, response))
+                target_results.update(self.analyze_airtable_app(url, response, verify_vulnerabilities))
             else:
-                target_results.update(self.analyze_generic_app(url, response))
+                target_results.update(self.analyze_generic_app(url, response, verify_vulnerabilities))
 
             # Common vulnerability checks
             target_results["vulnerabilities"].extend(
@@ -183,7 +183,7 @@ class LowCodeSecurityScanner:
 
         return ssl_info
 
-    def analyze_bubble_app(self, url, response):
+    def analyze_bubble_app(self, url, response, verify_vulnerabilities=True):
         """Specific analysis for Bubble.io applications"""
         print("[+] Analyzing Bubble.io application using BubbleAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
@@ -191,7 +191,9 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
-        verification_summary = analyzer.verify_vulnerabilities(url)
+        verification_summary = None
+        if verify_vulnerabilities:
+            verification_summary = analyzer.verify_vulnerabilities(url)
 
         # Map BubbleAnalyzer findings to the format expected by scanner
         return {
@@ -205,7 +207,7 @@ class LowCodeSecurityScanner:
             "verification_summary": verification_summary,
         }
 
-    def analyze_outsystems_app(self, url, response):
+    def analyze_outsystems_app(self, url, response, verify_vulnerabilities=True):
         """Specific analysis for OutSystems applications"""
         print("[+] Analyzing OutSystems application using OutSystemsAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
@@ -213,7 +215,9 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
-        verification_summary = analyzer.verify_vulnerabilities(url)
+        verification_summary = None
+        if verify_vulnerabilities:
+            verification_summary = analyzer.verify_vulnerabilities(url)
 
         return {
             "outsystems_specific": {
@@ -225,7 +229,7 @@ class LowCodeSecurityScanner:
             "verification_summary": verification_summary,
         }
 
-    def analyze_airtable_app(self, url, response):
+    def analyze_airtable_app(self, url, response, verify_vulnerabilities=True):
         """Specific analysis for Airtable applications"""
         print("[+] Analyzing Airtable application using AirtableAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
@@ -233,7 +237,9 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
-        verification_summary = analyzer.verify_vulnerabilities(url)
+        verification_summary = None
+        if verify_vulnerabilities:
+            verification_summary = analyzer.verify_vulnerabilities(url)
 
         return {
             "airtable_specific": {
@@ -245,7 +251,7 @@ class LowCodeSecurityScanner:
             "verification_summary": verification_summary,
         }
 
-    def analyze_generic_app(self, url, response):
+    def analyze_generic_app(self, url, response, verify_vulnerabilities=True):
         """Generic analysis for unknown platforms"""
         print("[+] Performing generic security analysis using GenericWebAnalyzer...")
         soup = BeautifulSoup(response.content, "html.parser")
@@ -253,7 +259,9 @@ class LowCodeSecurityScanner:
         results = analyzer.analyze(url, response, soup)
 
         # Perform active verification of found vulnerabilities
-        verification_summary = analyzer.verify_vulnerabilities(url)
+        verification_summary = None
+        if verify_vulnerabilities:
+            verification_summary = analyzer.verify_vulnerabilities(url)
 
         return {
             "generic_analysis": results.get("generic_findings", {}),

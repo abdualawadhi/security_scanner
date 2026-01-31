@@ -27,10 +27,11 @@ from website_security_scanner.enhanced_report_generator import EnhancedReportGen
 from website_security_scanner.result_transformer import transform_results_for_professional_report
 from website_security_scanner.verifier import VulnerabilityVerifier
 
-# Global configuration
-UPLOAD_FOLDER = Path('data/uploads')
-REPORTS_FOLDER = Path('data/reports')
-SCANS_FOLDER = Path('data/scans')
+# Global configuration - use absolute paths from project root
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+UPLOAD_FOLDER = PROJECT_ROOT / 'data' / 'uploads'
+REPORTS_FOLDER = PROJECT_ROOT / 'data' / 'reports'
+SCANS_FOLDER = PROJECT_ROOT / 'data' / 'scans'
 
 # Create directories
 for folder in [UPLOAD_FOLDER, REPORTS_FOLDER, SCANS_FOLDER]:
@@ -61,12 +62,22 @@ def create_app(config=None):
     CORS(app)
     
     # Initialize SocketIO
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+    try:
+        socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+        print(f"SocketIO initialized successfully with async_mode='threading'")
+    except Exception as e:
+        print(f"Error initializing SocketIO: {e}")
+        return None, None
     
     # Initialize scanner components
-    app.scanner = LowCodeSecurityScanner()
-    app.report_generator = EnhancedReportGenerator()
-    app.verifier = VulnerabilityVerifier(app.scanner.session)
+    try:
+        app.scanner = LowCodeSecurityScanner()
+        app.report_generator = EnhancedReportGenerator()
+        app.verifier = VulnerabilityVerifier(app.scanner.session)
+        print("Scanner components initialized successfully")
+    except Exception as e:
+        print(f"Error initializing scanner components: {e}")
+        return None, None
     
     # Scan queue and history
     app.scan_queue = []
@@ -77,7 +88,7 @@ def create_app(config=None):
     register_routes(app)
     register_socketio_events(app, socketio)
     
-    return app
+    return app, socketio
 
 
 def register_routes(app):
@@ -336,7 +347,7 @@ def execute_scan(app, socketio, scan_id):
         })
         
         # Perform scan
-        results = app.scanner.scan_target(url)
+        results = app.scanner.scan_target(url, verify_vulnerabilities=verify)
         
         socketio.emit('scan_update', {
             'scan_id': scan_id,
@@ -344,27 +355,7 @@ def execute_scan(app, socketio, scan_id):
             'message': 'Analyzing vulnerabilities...'
         })
         
-        # Verify vulnerabilities if requested
-        if verify and results.get('vulnerabilities'):
-            socketio.emit('scan_update', {
-                'scan_id': scan_id,
-                'progress': 70,
-                'message': 'Verifying vulnerabilities...'
-            })
-            
-            verified_count = 0
-            for i, vuln in enumerate(results['vulnerabilities']):
-                verification = app.verifier.verify_vulnerability(vuln)
-                vuln['verification'] = verification
-                if verification.get('verified'):
-                    verified_count += 1
-                
-                progress = 70 + (i / len(results['vulnerabilities'])) * 20
-                socketio.emit('scan_update', {
-                    'scan_id': scan_id,
-                    'progress': int(progress),
-                    'message': f'Verified {verified_count} vulnerabilities...'
-                })
+        # Verification is now handled by the scanner if verify=True
         
         # Save results
         result_file = Path(app.config['SCANS_FOLDER']) / f"{scan_id}.json"

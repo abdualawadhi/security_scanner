@@ -85,19 +85,19 @@ class SecurityScannerCLI:
 
         print(f"{color}[{icon}] {message}{Style.RESET_ALL}")
 
-    def scan_single_url(self, url: str, output_format: str = "json") -> Dict[str, Any]:
+    def scan_single_url(self, url: str, output_format: str = "json", verify_vulnerabilities: bool = True) -> Dict[str, Any]:
         """Scan a single URL and return results"""
         self.print_status(f"Starting security scan for: {url}")
 
         try:
             start_time = time.time()
-            result = self.scanner.scan_target(url)
+            result = self.scanner.scan_target(url, verify_vulnerabilities=verify_vulnerabilities)
             scan_time = time.time() - start_time
 
             result["scan_duration"] = round(scan_time, 2)
 
             # Print summary
-            self.print_scan_summary(result)
+            self.print_scan_summary(result, verify_vulnerabilities)
 
             return result
 
@@ -110,7 +110,7 @@ class SecurityScannerCLI:
             }
 
     def scan_batch_urls(
-        self, urls: List[str], output_format: str = "json"
+        self, urls: List[str], output_format: str = "json", verify_vulnerabilities: bool = True
     ) -> List[Dict[str, Any]]:
         """Scan multiple URLs"""
         self.print_status(f"Starting batch scan of {len(urls)} URLs")
@@ -119,7 +119,7 @@ class SecurityScannerCLI:
         for i, url in enumerate(urls, 1):
             self.print_status(f"Scanning {i}/{len(urls)}: {url}")
 
-            result = self.scan_single_url(url, output_format)
+            result = self.scan_single_url(url, output_format, verify_vulnerabilities)
             results.append(result)
 
             # Add delay between scans to be respectful
@@ -128,7 +128,7 @@ class SecurityScannerCLI:
 
         return results
 
-    def print_scan_summary(self, result: Dict[str, Any]):
+    def print_scan_summary(self, result: Dict[str, Any], verify_vulnerabilities: bool = True):
         """Print a summary of scan results"""
         url = result.get("url", "Unknown")
         platform = result.get("platform_type", "unknown").title()
@@ -190,19 +190,22 @@ class SecurityScannerCLI:
             self.print_status(f"SSL/TLS issues: {ssl_info['error']}", "warning")
 
         # Verification Summary
-        verification_summary = result.get("verification_summary", {})
-        if verification_summary:
-            total_vulns = verification_summary.get("total_vulnerabilities", 0)
-            verified_vulns = verification_summary.get("verified_vulnerabilities", 0)
-            verification_rate = verification_summary.get("verification_rate", 0)
+        if verify_vulnerabilities:
+            verification_summary = result.get("verification_summary", {})
+            if verification_summary:
+                total_vulns = verification_summary.get("total_vulnerabilities", 0)
+                verified_vulns = verification_summary.get("verified_vulnerabilities", 0)
+                verification_rate = verification_summary.get("verification_rate", 0)
 
-            if total_vulns > 0:
-                print(f"\n{Fore.CYAN}Vulnerability Verification:{Style.RESET_ALL}")
-                print(f"  Total: {total_vulns}")
-                print(f"  Verified: {Fore.GREEN}{verified_vulns}{Style.RESET_ALL}")
-                print(f"  Verification Rate: {verification_rate}%")
-            else:
-                print(f"\n{Fore.CYAN}Vulnerability Verification:{Style.RESET_ALL} No vulnerabilities to verify")
+                if total_vulns > 0:
+                    print(f"\n{Fore.CYAN}Vulnerability Verification:{Style.RESET_ALL}")
+                    print(f"  Total: {total_vulns}")
+                    print(f"  Verified: {Fore.GREEN}{verified_vulns}{Style.RESET_ALL}")
+                    print(f"  Verification Rate: {verification_rate}%")
+                else:
+                    print(f"\n{Fore.CYAN}Vulnerability Verification:{Style.RESET_ALL} No vulnerabilities to verify")
+        else:
+            print(f"\n{Fore.CYAN}Vulnerability Verification: Disabled{Style.RESET_ALL}")
 
         print()
 
@@ -552,6 +555,11 @@ Examples:
     parser.add_argument(
         "--no-color", action="store_true", help="Disable colored output"
     )
+    parser.add_argument(
+        "--no-verify",
+        action="store_true",
+        help="Disable active vulnerability verification (faster scans)",
+    )
 
     # Scanner options
     parser.add_argument(
@@ -587,14 +595,14 @@ Examples:
     try:
         if args.url:
             # Single URL scan
-            result = cli.scan_single_url(args.url, args.format)
+            result = cli.scan_single_url(args.url, args.format, not args.no_verify)
             results = [result]
 
         elif args.batch:
             # Batch URL scan
             urls = cli.load_urls_from_file(args.batch)
             if urls:
-                results = cli.scan_batch_urls(urls, args.format)
+                results = cli.scan_batch_urls(urls, args.format, not args.no_verify)
 
         elif args.config:
             # Configuration-based scan
@@ -608,7 +616,7 @@ Examples:
                         all_urls.extend(urls)
 
                 if all_urls:
-                    results = cli.scan_batch_urls(all_urls, args.format)
+                    results = cli.scan_batch_urls(all_urls, args.format, not args.no_verify)
 
         # Generate enhanced report if requested
         if args.enhanced and len(results) == 1:

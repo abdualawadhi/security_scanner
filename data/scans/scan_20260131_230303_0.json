@@ -1,0 +1,401 @@
+{
+  "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+  "timestamp": "2026-01-31T23:03:03.918905",
+  "platform_type": "outsystems",
+  "vulnerabilities": [
+    {
+      "type": "Session Management Issues",
+      "severity": "Medium",
+      "description": "No clear session management implementation found",
+      "evidence": "{'type': 'exact', 'text': 'Session management patterns not found in JavaScript', 'context': 'Missing session management implementation'}",
+      "recommendation": "Implement secure session management with proper timeout and validation",
+      "confidence": "Firm",
+      "category": "Session Management",
+      "owasp": "A07:2021 - Identification and Authentication Failures",
+      "cwe": [
+        "CWE-287",
+        "CWE-307"
+      ],
+      "parameter": "",
+      "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+      "timestamp": "2026-01-31T23:03:05.644302",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+          "request": "GET /UST/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 403 Forbidden\nServer: CloudFront\nDate: Sat, 31 Jan 2026 20:03:03 GMT\nContent-Type: text/html\nContent-Length: 919\nConnection: keep-alive\nX-Cache: Error from cloudfront\nVia: 1.1 13681eeb27466281e564f9bbd59b4c8c.cloudfront.net (CloudFront)\nX-Amz-Cf-Pop: MCT50-P2\nX-Amz-Cf-Id: sSzK-ZO7VrpO5bUX_IaWH-M4HyEoevSV_cuQ3NqCEzuYvBczXfj7rg==\nStrict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+          "evidence": [
+            {
+              "type": "exact",
+              "text": "Session management patterns not found in JavaScript",
+              "context": "Missing session management implementation"
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing Role-Based Access Control",
+      "severity": "High",
+      "description": "No role-based access control implementation detected",
+      "evidence": "No role patterns found",
+      "recommendation": "Implement comprehensive role-based access control",
+      "confidence": "Firm",
+      "category": "Access Control",
+      "owasp": "A01:2021 - Broken Access Control",
+      "cwe": [
+        "CWE-284"
+      ],
+      "parameter": "",
+      "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+      "timestamp": "2026-01-31T23:03:05.647137",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+          "request": "GET /UST/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 403 Forbidden\nServer: CloudFront\nDate: Sat, 31 Jan 2026 20:03:03 GMT\nContent-Type: text/html\nContent-Length: 919\nConnection: keep-alive\nX-Cache: Error from cloudfront\nVia: 1.1 13681eeb27466281e564f9bbd59b4c8c.cloudfront.net (CloudFront)\nX-Amz-Cf-Pop: MCT50-P2\nX-Amz-Cf-Id: sSzK-ZO7VrpO5bUX_IaWH-M4HyEoevSV_cuQ3NqCEzuYvBczXfj7rg==\nStrict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+          "evidence": [
+            "No role patterns found"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing Content Security Policy",
+      "severity": "Low",
+      "description": "No CSP header found",
+      "evidence": "",
+      "recommendation": "Implement Content Security Policy",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-693"
+      ],
+      "parameter": "",
+      "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+      "timestamp": "2026-01-31T23:03:05.661029",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+          "request": "GET /UST/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 403 Forbidden\nServer: CloudFront\nDate: Sat, 31 Jan 2026 20:03:03 GMT\nContent-Type: text/html\nContent-Length: 919\nConnection: keep-alive\nX-Cache: Error from cloudfront\nVia: 1.1 13681eeb27466281e564f9bbd59b4c8c.cloudfront.net (CloudFront)\nX-Amz-Cf-Pop: MCT50-P2\nX-Amz-Cf-Id: sSzK-ZO7VrpO5bUX_IaWH-M4HyEoevSV_cuQ3NqCEzuYvBczXfj7rg==\nStrict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing Clickjacking Protection",
+      "severity": "Low",
+      "description": "No X-Frame-Options header",
+      "evidence": "",
+      "recommendation": "Implement X-Frame-Options header",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-693"
+      ],
+      "parameter": "",
+      "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+      "timestamp": "2026-01-31T23:03:05.663161",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+          "request": "GET /UST/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 403 Forbidden\nServer: CloudFront\nDate: Sat, 31 Jan 2026 20:03:03 GMT\nContent-Type: text/html\nContent-Length: 919\nConnection: keep-alive\nX-Cache: Error from cloudfront\nVia: 1.1 13681eeb27466281e564f9bbd59b4c8c.cloudfront.net (CloudFront)\nX-Amz-Cf-Pop: MCT50-P2\nX-Amz-Cf-Id: sSzK-ZO7VrpO5bUX_IaWH-M4HyEoevSV_cuQ3NqCEzuYvBczXfj7rg==\nStrict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Cacheable HTTPS Response",
+      "severity": "Low",
+      "description": "HTTPS response may be cached",
+      "evidence": "",
+      "recommendation": "Implement proper cache control for sensitive pages",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-525"
+      ],
+      "parameter": "",
+      "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+      "timestamp": "2026-01-31T23:03:05.671883",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+          "request": "GET /UST/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 403 Forbidden\nServer: CloudFront\nDate: Sat, 31 Jan 2026 20:03:03 GMT\nContent-Type: text/html\nContent-Length: 919\nConnection: keep-alive\nX-Cache: Error from cloudfront\nVia: 1.1 13681eeb27466281e564f9bbd59b4c8c.cloudfront.net (CloudFront)\nX-Amz-Cf-Pop: MCT50-P2\nX-Amz-Cf-Id: sSzK-ZO7VrpO5bUX_IaWH-M4HyEoevSV_cuQ3NqCEzuYvBczXfj7rg==\nStrict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "X-Content-Type-Options Header Missing",
+      "severity": "Low",
+      "description": "X-Content-Type-Options: nosniff header is missing or incorrectly configured",
+      "evidence": "Missing",
+      "recommendation": "Add 'X-Content-Type-Options: nosniff' header to all responses.",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+      "timestamp": "2026-01-31T23:03:08.540366",
+      "background": "The X-Content-Type-Options response HTTP header is a marker used by the server to indicate that the MIME types advertised in the Content-Type headers should be followed and not be changed.",
+      "impact": "MIME-sniffing can lead to security vulnerabilities where a browser interprets a response in a different way than intended, potentially leading to XSS.",
+      "references": [
+        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options"
+      ],
+      "instances": [
+        {
+          "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+          "request": "GET /UST/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 403 Forbidden\nServer: CloudFront\nDate: Sat, 31 Jan 2026 20:03:03 GMT\nContent-Type: text/html\nContent-Length: 919\nConnection: keep-alive\nX-Cache: Error from cloudfront\nVia: 1.1 13681eeb27466281e564f9bbd59b4c8c.cloudfront.net (CloudFront)\nX-Amz-Cf-Pop: MCT50-P2\nX-Amz-Cf-Id: sSzK-ZO7VrpO5bUX_IaWH-M4HyEoevSV_cuQ3NqCEzuYvBczXfj7rg==\nStrict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+          "evidence": [
+            "Missing"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing Referrer-Policy Header",
+      "severity": "Low",
+      "description": "The Referrer-Policy security header is missing",
+      "evidence": "",
+      "recommendation": "Implement the Referrer-Policy header to enhance security.",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+      "timestamp": "2026-01-31T23:03:08.541135",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+          "request": "GET /UST/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 403 Forbidden\nServer: CloudFront\nDate: Sat, 31 Jan 2026 20:03:03 GMT\nContent-Type: text/html\nContent-Length: 919\nConnection: keep-alive\nX-Cache: Error from cloudfront\nVia: 1.1 13681eeb27466281e564f9bbd59b4c8c.cloudfront.net (CloudFront)\nX-Amz-Cf-Pop: MCT50-P2\nX-Amz-Cf-Id: sSzK-ZO7VrpO5bUX_IaWH-M4HyEoevSV_cuQ3NqCEzuYvBczXfj7rg==\nStrict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing Permissions-Policy Header",
+      "severity": "Info",
+      "description": "The Permissions-Policy security header is missing",
+      "evidence": "",
+      "recommendation": "Implement the Permissions-Policy header to enhance security.",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+      "timestamp": "2026-01-31T23:03:08.541793",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+          "request": "GET /UST/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 403 Forbidden\nServer: CloudFront\nDate: Sat, 31 Jan 2026 20:03:03 GMT\nContent-Type: text/html\nContent-Length: 919\nConnection: keep-alive\nX-Cache: Error from cloudfront\nVia: 1.1 13681eeb27466281e564f9bbd59b4c8c.cloudfront.net (CloudFront)\nX-Amz-Cf-Pop: MCT50-P2\nX-Amz-Cf-Id: sSzK-ZO7VrpO5bUX_IaWH-M4HyEoevSV_cuQ3NqCEzuYvBczXfj7rg==\nStrict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing X-Permitted-Cross-Domain-Policies Header",
+      "severity": "Info",
+      "description": "The X-Permitted-Cross-Domain-Policies security header is missing",
+      "evidence": "",
+      "recommendation": "Implement the X-Permitted-Cross-Domain-Policies header to enhance security.",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+      "timestamp": "2026-01-31T23:03:08.542658",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+          "request": "GET /UST/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 403 Forbidden\nServer: CloudFront\nDate: Sat, 31 Jan 2026 20:03:03 GMT\nContent-Type: text/html\nContent-Length: 919\nConnection: keep-alive\nX-Cache: Error from cloudfront\nVia: 1.1 13681eeb27466281e564f9bbd59b4c8c.cloudfront.net (CloudFront)\nX-Amz-Cf-Pop: MCT50-P2\nX-Amz-Cf-Id: sSzK-ZO7VrpO5bUX_IaWH-M4HyEoevSV_cuQ3NqCEzuYvBczXfj7rg==\nStrict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Hidden HTTP/2",
+      "severity": "Info",
+      "description": "Origin advertises HTTP/2 (h2) via ALPN; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
+      "evidence": "ALPN negotiated: h2",
+      "recommendation": "Review HTTP/2 configuration at the edge (WAF/CDN/proxy), apply rate limits, and keep TLS stack updated.",
+      "confidence": "Firm",
+      "category": "Protocol Security",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+      "timestamp": "2026-01-31T23:03:14.079473",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://personal-7hwwkk2j-dev.outsystems.app/UST/",
+          "request": "GET /UST/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 403 Forbidden\nServer: CloudFront\nDate: Sat, 31 Jan 2026 20:03:03 GMT\nContent-Type: text/html\nContent-Length: 919\nConnection: keep-alive\nX-Cache: Error from cloudfront\nVia: 1.1 13681eeb27466281e564f9bbd59b4c8c.cloudfront.net (CloudFront)\nX-Amz-Cf-Pop: MCT50-P2\nX-Amz-Cf-Id: sSzK-ZO7VrpO5bUX_IaWH-M4HyEoevSV_cuQ3NqCEzuYvBczXfj7rg==\nStrict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+          "evidence": [
+            "ALPN negotiated: h2"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    }
+  ],
+  "security_headers": {
+    "X-Frame-Options": "Missing",
+    "X-XSS-Protection": "Missing",
+    "X-Content-Type-Options": "Missing",
+    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+    "Content-Security-Policy": "Missing",
+    "Referrer-Policy": "Missing",
+    "Permissions-Policy": "Missing",
+    "X-Permitted-Cross-Domain-Policies": "Missing",
+    "security_score": "1/8"
+  },
+  "ssl_analysis": {
+    "version": "TLSv1.3",
+    "cipher": [
+      "TLS_AES_128_GCM_SHA256",
+      "TLSv1.3",
+      128
+    ],
+    "certificate_subject": [],
+    "certificate_issuer": [],
+    "certificate_expiry": "Unknown",
+    "certificate_san": []
+  },
+  "information_disclosure": [],
+  "authentication_issues": [],
+  "authorization_issues": [],
+  "data_exposure": [],
+  "api_endpoints": [],
+  "forms_analysis": [],
+  "recommendations": [
+    {
+      "category": "Security Headers",
+      "priority": "High",
+      "description": "Implement missing security headers: X-Frame-Options, X-XSS-Protection, X-Content-Type-Options, Content-Security-Policy, Referrer-Policy, Permissions-Policy, X-Permitted-Cross-Domain-Policies"
+    }
+  ],
+  "status_code": 403,
+  "response_time": 1.442509,
+  "outsystems_specific": {
+    "rest_apis_found": [],
+    "screen_actions_found": [],
+    "entities": []
+  },
+  "verification_summary": {
+    "total_vulnerabilities": 10,
+    "verified_vulnerabilities": 0,
+    "high_confidence_verifications": 0,
+    "verification_rate": 0.0
+  }
+}

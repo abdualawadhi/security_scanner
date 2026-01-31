@@ -4,19 +4,28 @@ OutSystems Security Analyzer
 Low-Code Platform Security Scanner
 
 Specialized analyzer for OutSystems applications with platform-specific
-vulnerability detection.
+vulnerability detection and comprehensive traditional web vulnerability
+scanning (XSS, SQLi, CSRF, Open Redirect, etc.).
 
 Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 """
 
 import re
+import secrets
 from typing import Any, Dict, List
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .vulnerability_detection import (
+    XSSDetector,
+    SQLInjectionDetector,
+    CSRFDetector,
+    OpenRedirectDetector,
+)
 from ..utils.evidence_builder import EvidenceBuilder
 
 
@@ -40,6 +49,12 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self.rest_apis: List[str] = []
         self.screen_actions: List[Dict[str, Any]] = []
         self.entities: List[Dict[str, Any]] = []
+        
+        # Initialize vulnerability detectors
+        self.xss_detector = XSSDetector(session)
+        self.sqli_detector = SQLInjectionDetector(session)
+        self.csrf_detector = CSRFDetector(session)
+        self.redirect_detector = OpenRedirectDetector(session)
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
@@ -107,6 +122,18 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         # Check for Base64 encoded data
         self._check_base64_data(url, html_content)
 
+        # Check for Host Header Injection
+        self._check_host_header_injection(url)
+
+        # Check for missing Content-Type
+        self._check_missing_content_type(response)
+
+        # Check for X-Content-Type-Options
+        self._check_x_content_type_options(response)
+
+        # Check for informational security headers
+        self._check_security_headers_informational(response)
+
         # NEW DETECTIONS - Enhanced coverage
         # Check for HTTP/2 protocol support (Hidden HTTP/2)
         self._check_http2_support(url)
@@ -128,6 +155,202 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
         # Advanced header analysis (Burp: Secret input: header)
         self._check_secret_input_header_reflection(url)
+
+        # COMPREHENSIVE VULNERABILITY DETECTION (Traditional Web Vulnerabilities)
+        # Cross-Site Scripting (XSS) Detection
+        xss_vulns = self.xss_detector.detect_reflected_xss(url, response, html_content)
+        for vuln in xss_vulns:
+            evidence = f"Parameter: {vuln['parameter']}, Context: {vuln['context']}"
+            self.add_enriched_vulnerability(
+                vuln['type'],
+                vuln['severity'],
+                f"{vuln['type']} detected in parameter '{vuln['parameter']}'",
+                evidence,
+                "Implement output encoding, input validation, and Content Security Policy",
+                category="Cross-Site Scripting",
+                owasp="A03:2021 - Injection",
+                cwe=["CWE-79"],
+                background="Cross-Site Scripting (XSS) occurs when untrusted data is included in web pages without proper validation or escaping, allowing attackers to execute malicious scripts in victims' browsers.",
+                impact="XSS can lead to session hijacking, defacement, malware distribution, data theft, and credential harvesting. Attackers can impersonate users, perform actions on their behalf, and steal sensitive data.",
+                references=[
+                    "https://owasp.org/www-community/attacks/xss/",
+                    "https://cwe.mitre.org/data/definitions/79.html",
+                    "https://portswigger.net/web-security/cross-site-scripting"
+                ]
+            )
+
+        # DOM-based XSS Detection
+        dom_xss_vulns = self.xss_detector.detect_dom_xss(url, js_content)
+        for vuln in dom_xss_vulns:
+            evidence = f"Source: {vuln['source']}, Sink: {vuln['sink']}"
+            self.add_enriched_vulnerability(
+                vuln['type'],
+                vuln['severity'],
+                f"{vuln['type']} detected via DOM manipulation",
+                evidence,
+                "Avoid using dangerous DOM sinks with user-controlled data; use safe DOM APIs and validate input",
+                category="Cross-Site Scripting",
+                owasp="A03:2021 - Injection",
+                cwe=["CWE-79"],
+                background="DOM-based XSS vulnerabilities occur when the DOM is modified in an unsafe way using untrusted data from sources like location.hash or document.URL.",
+                impact="DOM-based XSS is particularly dangerous as it bypasses server-side protections. Attackers can execute arbitrary JavaScript in the victim's browser context.",
+                references=[
+                    "https://owasp.org/www-community/attacks/DOM_Based_XSS",
+                    "https://portswigger.net/web-security/cross-site-scripting/dom-based"
+                ]
+            )
+
+        # SQL Injection Detection
+        sqli_vulns = self.sqli_detector.detect_sql_injection(url, response)
+        for vuln in sqli_vulns:
+            if vuln['type'] == 'SQL Injection':
+                evidence = f"Parameter: {vuln.get('parameter', 'unknown')}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability detected in parameter '{vuln.get('parameter', 'unknown')}'",
+                    evidence,
+                    "Use parameterized queries, prepared statements, and input validation. Never concatenate user input into SQL queries.",
+                    category="Injection",
+                    owasp="A03:2021 - Injection",
+                    cwe=["CWE-89"],
+                    background="SQL Injection occurs when untrusted user input is included in SQL queries without proper sanitization, allowing attackers to manipulate database queries.",
+                    impact="SQL injection can lead to data breach, data loss, authentication bypass, privilege escalation, and in severe cases, complete server compromise.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/SQL_Injection",
+                        "https://cwe.mitre.org/data/definitions/89.html",
+                        "https://portswigger.net/web-security/sql-injection"
+                    ]
+                )
+            elif vuln['type'] == 'SQL Error Disclosure':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Database error messages are being disclosed to users",
+                    "SQL error patterns found in response",
+                    "Configure database error handling to display generic messages to users. Log detailed errors server-side.",
+                    category="Information Disclosure",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-209"],
+                    background="SQL error messages can reveal database structure, table names, column names, and implementation details to attackers.",
+                    impact="SQL error disclosure assists attackers in crafting more precise SQL injection attacks and understanding the database schema.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/209.html",
+                        "https://owasp.org/www-project-web-security-testing-guide/"
+                    ]
+                )
+
+        # CSRF Detection
+        csrf_vulns = self.csrf_detector.detect_csrf(url, response, soup)
+        for vuln in csrf_vulns:
+            if vuln['type'] == 'Cross-Site Request Forgery (CSRF)':
+                evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Missing: {vuln['missing_protection']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability in form {vuln['form_index']}",
+                    evidence,
+                    "Implement anti-CSRF tokens in all state-changing forms. Verify SameSite cookie attributes. Use CSRF protection headers.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="CSRF attacks force authenticated users to execute unwanted actions on a web application without their consent.",
+                    impact="CSRF can lead to unauthorized transactions, password changes, email modifications, data deletion, and privilege escalation.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/csrf",
+                        "https://cwe.mitre.org/data/definitions/352.html",
+                        "https://portswigger.net/web-security/csrf"
+                    ]
+                )
+            elif vuln['type'] == 'Weak CSRF Protection':
+                evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Issue: {vuln['issue']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} in form {vuln['form_index']}",
+                    evidence,
+                    "Implement SameSite=Strict or SameSite=Lax cookies. Use double-submit cookie pattern or custom CSRF tokens.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="Weak CSRF protection may not prevent all CSRF attack vectors, especially in cross-origin scenarios.",
+                    impact="Weak CSRF protection can still allow attackers to perform unauthorized actions on behalf of authenticated users.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/csrf",
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite"
+                    ]
+                )
+            elif vuln['type'] == 'API CSRF Vulnerability':
+                evidence = f"Method: {vuln['method']}, Issue: {vuln['issue']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} in API endpoint",
+                    evidence,
+                    "Implement CSRF tokens, verify Origin/Referer headers, or use custom headers like X-Requested-With for state-changing API calls.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="API endpoints may be vulnerable to CSRF if they don't implement proper CSRF protection mechanisms.",
+                    impact="API CSRF vulnerabilities can lead to unauthorized API calls, data modification, and privilege escalation.",
+                    references=[
+                        "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
+                    ]
+                )
+
+        # Open Redirect Detection
+        redirect_vulns = self.redirect_detector.detect_open_redirect(url, response, soup)
+        for vuln in redirect_vulns:
+            if vuln['type'] == 'Open Redirect':
+                evidence = f"Parameter: {vuln['parameter']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability detected in parameter '{vuln['parameter']}'",
+                    evidence,
+                    "Validate and whitelist redirect URLs. Use relative URLs where possible. Avoid using user input for redirect destinations.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="Open redirect vulnerabilities occur when an application accepts user-controllable input that specifies a redirect URL without proper validation.",
+                    impact="Attackers can redirect users to phishing sites, malware distribution, or malicious content, bypassing URL filtering and trust indicators.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html",
+                        "https://owasp.org/www-project-web-security-testing-guide/"
+                    ]
+                )
+            elif vuln['type'] == 'Open Redirect via Meta Refresh':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Open redirect via meta refresh tag detected",
+                    "Meta refresh with user-controlled URL parameter",
+                    "Validate redirect URLs before using them in meta refresh tags. Use server-side redirects with proper validation.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="Meta refresh tags can be abused for open redirect attacks if they incorporate user-controlled input.",
+                    impact="Similar to standard open redirects, this can be used for phishing and malware distribution.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html"
+                    ]
+                )
+            elif vuln['type'] == 'Potential Open Redirect via JavaScript':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Potential open redirect via JavaScript detected",
+                    "JavaScript redirect code with user input",
+                    "Review JavaScript redirect code to ensure URLs are validated and sanitized before use.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="JavaScript-based redirects can be exploited for phishing if they incorporate user-controlled input without validation.",
+                    impact="Attackers can craft malicious URLs that redirect victims to phishing sites or malicious content.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html"
+                    ]
+                )
 
         return {
             "rest_apis": self.rest_apis,
@@ -305,55 +528,103 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
     def _check_session_tokens_in_url(self, url: str):
         """Check for session tokens in URL"""
-        if re.search(r'[?&](session|token|sid)=', url, re.IGNORECASE):
+        session_params = [
+            'session', 'token', 'sid', 'sessionid', 'session_id',
+            'session_code', 'state', 'nonce', 'auth_token', 'code'
+        ]
+        
+        found_params = []
+        for param in session_params:
+            if re.search(rf'[?&]{param}=', url, re.IGNORECASE):
+                found_params.append(param)
+                
+        if found_params:
             self.add_enriched_vulnerability(
                 "Session Token in URL",
                 "Medium",
-                "Session token found in URL",
+                f"Session-related token(s) found in URL: {', '.join(found_params)}",
                 url,
-                "Use secure cookies for session management",
+                "Use secure cookies for session management and avoid passing tokens in URLs. Use POST bodies or Authorization headers instead.",
                 category="Session Management",
                 owasp="A07:2021 - Identification and Authentication Failures",
-                cwe=["CWE-384"]
+                cwe=["CWE-384", "CWE-598"],
+                background="Sensitive information, such as session tokens, should not be passed in the URL. URLs can be logged by servers, proxies, and browser history, leading to token leakage.",
+                impact="If session tokens are leaked, attackers can hijack user sessions and perform unauthorized actions on behalf of the user.",
+                references=["https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url"]
             )
 
     def _check_secrets_in_javascript(self, js_content: str, url: str):
         """Check for secrets in JavaScript"""
         secret_patterns = [
-            r'["\']([A-Za-z0-9]{32,})["\']',  # Potential API keys
-            r'password["\']?\s*[:=]\s*["\']([^"\']+)["\']',
-            r'secret["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            (r'["\']([A-Za-z0-9]{32,})["\']', "Potential API key/token"),
+            (r'(?i)password["\']?\s*[:=]\s*["\']([^"\']+)["\']', "Hardcoded password"),
+            (r'(?i)secret["\']?\s*[:=]\s*["\']([^"\']+)["\']', "Hardcoded secret"),
+            (r'(?i)apikey["\']?\s*[:=]\s*["\']([^"\']+)["\']', "Hardcoded API key"),
+            (r'(?i)FailShowPassword\s*:\s*["\']([^"\']+)["\']', "OutSystems specific secret"),
+            (r'OSUI-API-[0-9]{5}', "OutSystems UI API Key pattern")
         ]
 
-        for pattern in secret_patterns:
-            matches = re.findall(pattern, js_content, re.IGNORECASE)
+        for pattern, desc in secret_patterns:
+            matches = re.findall(pattern, js_content)
             for match in matches:
-                if len(match) > 10:  # Avoid false positives
+                # Basic entropy/length check to reduce false positives
+                if len(match) > 5:
                     self.add_enriched_vulnerability(
                         "Potential Secret in JavaScript",
                         "High",
-                        f"Potential secret found in JavaScript: {match[:10]}...",
-                        match[:20],
-                        "Remove secrets from client-side code",
+                        f"{desc} found in JavaScript: {match[:10]}...",
+                        f"Pattern: {desc}, Match: {match[:20]}",
+                        "Remove all hardcoded secrets, API keys, and passwords from client-side JavaScript. Use server-side configuration or secure vault services.",
                         category="Secret Management",
                         owasp="A02:2021 - Cryptographic Failures",
-                        cwe=["CWE-798"]
+                        cwe=["CWE-798"],
+                        background="Hardcoding secrets in client-side code makes them visible to anyone who can access the application. This is a common source of credential leakage.",
+                        impact="Exposed secrets can lead to unauthorized access to APIs, databases, and third-party services, potentially resulting in data breaches.",
+                        references=["https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"]
                     )
 
     def _check_cookie_security(self, response: requests.Response):
         """Check cookie security headers"""
-        cookies = response.headers.get("Set-Cookie", "")
-        if "Secure" not in cookies:
-            self.add_enriched_vulnerability(
-                "Insecure Cookie",
-                "Medium",
-                "Cookie lacks Secure flag",
-                cookies[:50],
-                "Set Secure flag for cookies",
-                category="Session Management",
-                owasp="A05:2021 - Security Misconfiguration",
-                cwe=["CWE-614"]
-            )
+        cookies = self._get_set_cookie_headers(response)
+        
+        for cookie in cookies:
+            cookie_name = cookie.split('=')[0] if '=' in cookie else "Unknown"
+            
+            if "Secure" not in cookie:
+                self.add_enriched_vulnerability(
+                    "Insecure Cookie (Missing Secure Flag)",
+                    "Medium",
+                    f"Cookie '{cookie_name}' lacks Secure flag",
+                    cookie[:100],
+                    "Set the 'Secure' flag for all cookies to ensure they are only transmitted over HTTPS.",
+                    category="Session Management",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-614"]
+                )
+                
+            if "HttpOnly" not in cookie:
+                self.add_enriched_vulnerability(
+                    "Cookie without HttpOnly Flag",
+                    "Low",
+                    f"Cookie '{cookie_name}' lacks HttpOnly flag",
+                    cookie[:100],
+                    "Set the 'HttpOnly' flag for all cookies to prevent them from being accessed by client-side scripts.",
+                    category="Session Management",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-1004"]
+                )
+                
+            if "SameSite" not in cookie:
+                self.add_enriched_vulnerability(
+                    "Cookie without SameSite Attribute",
+                    "Low",
+                    f"Cookie '{cookie_name}' lacks SameSite attribute",
+                    cookie[:100],
+                    "Set the 'SameSite' attribute (Lax or Strict) for all cookies to protect against CSRF attacks.",
+                    category="Session Management",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-1275"]
+                )
 
     def _check_csp_policy(self, response: requests.Response):
         """Check Content Security Policy"""
@@ -387,25 +658,49 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
     def _check_information_disclosure(self, js_content: str, html_content: str, response: requests.Response):
         """Check for information disclosure"""
-        error_patterns = [
-            r'error[:\s]+["\']([^"\']+)["\']',
-            r'exception[:\s]+["\']([^"\']+)["\']',
-            r'stack\s*trace',
+        patterns = [
+            (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', "Email address"),
+            (r'\b(?:10|127|172\.(?:1[6-9]|2[0-9]|3[0-1])|192\.168)\..*?\b', "Private IP address"),
+            (r'(?i)error[:\s]+["\']([^"\']+)["\']', "Error message"),
+            (r'(?i)exception[:\s]+["\']([^"\']+)["\']', "Exception message"),
+            (r'(?i)stack\s*trace', "Stack trace"),
+            (r'OutSystemsUI', "OutSystems UI version info")
         ]
 
-        for pattern in error_patterns:
-            if re.search(pattern, js_content + html_content, re.IGNORECASE):
+        for pattern, desc in patterns:
+            matches = re.findall(pattern, js_content + html_content)
+            if matches:
                 self.add_enriched_vulnerability(
                     "Information Disclosure",
-                    "Low",
-                    "Potential error information exposed",
-                    "",
-                    "Review error handling and information disclosure",
+                    "Info",
+                    f"Potential {desc} disclosure found in client-side content",
+                    f"Found {len(matches)} instance(s) of {desc}",
+                    "Review the disclosed information to ensure it doesn't reveal sensitive details about the application or infrastructure.",
                     category="Information Disclosure",
                     owasp="A09:2021 - Security Logging and Monitoring Failures",
                     cwe=["CWE-200"]
                 )
-                break
+
+    def _check_security_headers_informational(self, response: requests.Response):
+        """Check for security headers with Informational severity as per Burp report"""
+        headers_to_check = [
+            ("Referrer-Policy", "Low"),
+            ("Permissions-Policy", "Info"),
+            ("X-Permitted-Cross-Domain-Policies", "Info")
+        ]
+
+        for header, severity in headers_to_check:
+            if header not in response.headers:
+                self.add_enriched_vulnerability(
+                    f"Missing {header} Header",
+                    severity,
+                    f"The {header} security header is missing",
+                    "",
+                    f"Implement the {header} header to enhance security.",
+                    category="Security Headers",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-16"]
+                )
 
     def _check_reflected_input(self, url: str, response: requests.Response, html_content: str):
         """Check for reflected input (potential XSS)"""
@@ -484,3 +779,68 @@ class OutSystemsAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     )
             except Exception:
                 pass  # Skip if not valid Base64
+
+    def _check_host_header_injection(self, url: str):
+        """Active check for Host Header Injection"""
+        parsed = urlparse(url)
+        if not parsed.hostname:
+            return
+
+        test_host = f"evil-{secrets.token_hex(4)}.com"
+        headers = {
+            'Host': test_host,
+            'X-Forwarded-Host': test_host,
+            'X-Forwarded-For': '1.2.3.4',
+            'Forwarded': f'for=1.2.3.4;host={test_host};proto=https'
+        }
+
+        try:
+            # Test X-Forwarded-Host injection
+            resp = self.session.get(url, headers={'X-Forwarded-Host': test_host}, timeout=5, allow_redirects=False)
+            if test_host in resp.text or test_host in resp.headers.get('Location', ''):
+                self.add_enriched_vulnerability(
+                    "Host Header Injection (X-Forwarded-Host)",
+                    "Medium",
+                    "Application reflects X-Forwarded-Host header, potentially allowing cache poisoning or password reset poisoning",
+                    f"X-Forwarded-Host: {test_host} reflected in response",
+                    "Configure the web server to only trust the Host header and ignore or sanitize X-Forwarded-Host headers. Validate the Host header against a whitelist of allowed domains.",
+                    category="Injection",
+                    owasp="A03:2021 - Injection",
+                    cwe=["CWE-644"],
+                    background="Host header injection occurs when an application incorrectly handles the Host header or related headers like X-Forwarded-Host. Attackers can use this to manipulate links generated by the application.",
+                    impact="Can lead to web cache poisoning, password reset poisoning, and redirection to malicious sites.",
+                    references=["https://portswigger.net/web-security/host-header-injection"]
+                )
+        except Exception:
+            pass
+
+    def _check_missing_content_type(self, response: requests.Response):
+        """Check for missing Content-Type header"""
+        if 'Content-Type' not in response.headers:
+            self.add_enriched_vulnerability(
+                "Missing Content-Type Header",
+                "Medium",
+                "The response does not contain a Content-Type header",
+                "",
+                "Ensure all responses include an appropriate Content-Type header to prevent MIME-type sniffing attacks.",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-436"]
+            )
+
+    def _check_x_content_type_options(self, response: requests.Response):
+        """Check for missing X-Content-Type-Options header"""
+        if response.headers.get('X-Content-Type-Options', '').lower() != 'nosniff':
+            self.add_enriched_vulnerability(
+                "X-Content-Type-Options Header Missing",
+                "Low",
+                "X-Content-Type-Options: nosniff header is missing or incorrectly configured",
+                response.headers.get('X-Content-Type-Options', 'Missing'),
+                "Add 'X-Content-Type-Options: nosniff' header to all responses.",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-16"],
+                background="The X-Content-Type-Options response HTTP header is a marker used by the server to indicate that the MIME types advertised in the Content-Type headers should be followed and not be changed.",
+                impact="MIME-sniffing can lead to security vulnerabilities where a browser interprets a response in a different way than intended, potentially leading to XSS.",
+                references=["https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options"]
+            )

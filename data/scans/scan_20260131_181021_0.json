@@ -1,0 +1,460 @@
+{
+  "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+  "timestamp": "2026-01-31T18:10:21.424948",
+  "platform_type": "bubble",
+  "vulnerabilities": [
+    {
+      "type": "Potential Secret in JavaScript",
+      "severity": "High",
+      "description": "Potential secret found in JavaScript: 1769872220...",
+      "evidence": "1769872220522x386523",
+      "recommendation": "Remove secrets from client-side code",
+      "confidence": "Firm",
+      "category": "Secret Management",
+      "owasp": "A02:2021 - Cryptographic Failures",
+      "cwe": [
+        "CWE-798"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-01-31T18:10:24.754159",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 15:10:20 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_test_u2main=bus|1769872220522x386523681114149060|1769872220530x630101723815617900; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_test_u2main.sig=pS9DxIImzTTAp7y4VrU_oJCPrGw; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_u1_testmain=1769872220522x386523681114149060; path=/; secure, __cf_bm=heXWMCmAzG_RBKej8qmqvNYS.0bxSnwkm3wpVqPczCg-1769872220-1.0.1.1-GJfGW.JOgdxVZA5WgWtICITv5vP3b83n5RQOd7ZMdHvnkVWQrpZwOGFQJ4TieQX23CQE8ucj8fxi91MjJ_mhyZvLsSktZ_leqDkZXJZ8N2A; path=/; expires=Sat, 31-Jan-26 15:40:20 GMT; domain=.bubbleapps.io; HttpOnly; Secure; SameSite=None\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":81.1,\"percents\":{\"top\":{\"bubble_cpu\":40.4,\"block\":59.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.1},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":32.8,\"appserver_cache_misses_time\":0,\"redis\":17.6,\"fiber_queue\":6.5,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":58,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":25,\"fiber_queue\":111,\"blocks\":110},\"misc\":{\"userdb_results\":1,\"userdb_data\":228,\"spent_time\":4917121}}\nx-bubble-capacity-used: 0.076 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6a22a168d67154-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "1769872220522x386523"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      },
+      "verified": false,
+      "verification_reason": "No verification method available for this vulnerability type"
+    },
+    {
+      "type": "Potential Secret in JavaScript",
+      "severity": "High",
+      "description": "Potential secret found in JavaScript: 1769872220...",
+      "evidence": "1769872220522x386523",
+      "recommendation": "Remove secrets from client-side code",
+      "confidence": "Firm",
+      "category": "Secret Management",
+      "owasp": "A02:2021 - Cryptographic Failures",
+      "cwe": [
+        "CWE-798"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-01-31T18:10:24.759567",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 15:10:20 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_test_u2main=bus|1769872220522x386523681114149060|1769872220530x630101723815617900; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_test_u2main.sig=pS9DxIImzTTAp7y4VrU_oJCPrGw; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_u1_testmain=1769872220522x386523681114149060; path=/; secure, __cf_bm=heXWMCmAzG_RBKej8qmqvNYS.0bxSnwkm3wpVqPczCg-1769872220-1.0.1.1-GJfGW.JOgdxVZA5WgWtICITv5vP3b83n5RQOd7ZMdHvnkVWQrpZwOGFQJ4TieQX23CQE8ucj8fxi91MjJ_mhyZvLsSktZ_leqDkZXJZ8N2A; path=/; expires=Sat, 31-Jan-26 15:40:20 GMT; domain=.bubbleapps.io; HttpOnly; Secure; SameSite=None\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":81.1,\"percents\":{\"top\":{\"bubble_cpu\":40.4,\"block\":59.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.1},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":32.8,\"appserver_cache_misses_time\":0,\"redis\":17.6,\"fiber_queue\":6.5,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":58,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":25,\"fiber_queue\":111,\"blocks\":110},\"misc\":{\"userdb_results\":1,\"userdb_data\":228,\"spent_time\":4917121}}\nx-bubble-capacity-used: 0.076 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6a22a168d67154-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "1769872220522x386523"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      },
+      "verified": false,
+      "verification_reason": "No verification method available for this vulnerability type"
+    },
+    {
+      "type": "Missing AJAX Security Headers",
+      "severity": "Low",
+      "description": "AJAX requests may lack security headers",
+      "evidence": "",
+      "recommendation": "Implement proper AJAX security headers",
+      "confidence": "Firm",
+      "category": "Cross-Site Scripting",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-1007"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-01-31T18:10:24.768318",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 15:10:20 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_test_u2main=bus|1769872220522x386523681114149060|1769872220530x630101723815617900; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_test_u2main.sig=pS9DxIImzTTAp7y4VrU_oJCPrGw; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_u1_testmain=1769872220522x386523681114149060; path=/; secure, __cf_bm=heXWMCmAzG_RBKej8qmqvNYS.0bxSnwkm3wpVqPczCg-1769872220-1.0.1.1-GJfGW.JOgdxVZA5WgWtICITv5vP3b83n5RQOd7ZMdHvnkVWQrpZwOGFQJ4TieQX23CQE8ucj8fxi91MjJ_mhyZvLsSktZ_leqDkZXJZ8N2A; path=/; expires=Sat, 31-Jan-26 15:40:20 GMT; domain=.bubbleapps.io; HttpOnly; Secure; SameSite=None\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":81.1,\"percents\":{\"top\":{\"bubble_cpu\":40.4,\"block\":59.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.1},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":32.8,\"appserver_cache_misses_time\":0,\"redis\":17.6,\"fiber_queue\":6.5,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":58,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":25,\"fiber_queue\":111,\"blocks\":110},\"misc\":{\"userdb_results\":1,\"userdb_data\":228,\"spent_time\":4917121}}\nx-bubble-capacity-used: 0.076 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6a22a168d67154-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      },
+      "verified": false,
+      "verification_reason": "No verification method available for this vulnerability type"
+    },
+    {
+      "type": "Exposed Sensitive Endpoint",
+      "severity": "Low",
+      "description": "Potentially sensitive endpoint exposed: \"https://amqmalawadhi-85850.bubbleapps.io/version-test/api/1.1/init/data?location=\"",
+      "evidence": "\"https://amqmalawadhi-85850.bubbleapps.io/version-test/api/1.1/init/data?location=\"",
+      "recommendation": "Review exposed endpoints and implement proper access controls",
+      "confidence": "Firm",
+      "category": "Information Disclosure",
+      "owasp": "A01:2021 - Broken Access Control",
+      "cwe": [
+        "CWE-200"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-01-31T18:10:24.769827",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 15:10:20 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_test_u2main=bus|1769872220522x386523681114149060|1769872220530x630101723815617900; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_test_u2main.sig=pS9DxIImzTTAp7y4VrU_oJCPrGw; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_u1_testmain=1769872220522x386523681114149060; path=/; secure, __cf_bm=heXWMCmAzG_RBKej8qmqvNYS.0bxSnwkm3wpVqPczCg-1769872220-1.0.1.1-GJfGW.JOgdxVZA5WgWtICITv5vP3b83n5RQOd7ZMdHvnkVWQrpZwOGFQJ4TieQX23CQE8ucj8fxi91MjJ_mhyZvLsSktZ_leqDkZXJZ8N2A; path=/; expires=Sat, 31-Jan-26 15:40:20 GMT; domain=.bubbleapps.io; HttpOnly; Secure; SameSite=None\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":81.1,\"percents\":{\"top\":{\"bubble_cpu\":40.4,\"block\":59.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.1},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":32.8,\"appserver_cache_misses_time\":0,\"redis\":17.6,\"fiber_queue\":6.5,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":58,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":25,\"fiber_queue\":111,\"blocks\":110},\"misc\":{\"userdb_results\":1,\"userdb_data\":228,\"spent_time\":4917121}}\nx-bubble-capacity-used: 0.076 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6a22a168d67154-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "\"https://amqmalawadhi-85850.bubbleapps.io/version-test/api/1.1/init/data?location=\""
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      },
+      "verified": false,
+      "verification_reason": "No verification method available for this vulnerability type"
+    },
+    {
+      "type": "Hidden HTTP/2",
+      "severity": "Info",
+      "description": "Origin advertises HTTP/2 (h2) via ALPN; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
+      "evidence": "ALPN negotiated: h2",
+      "recommendation": "Review HTTP/2 configuration at the edge (WAF/CDN/proxy), apply rate limits, and keep TLS stack updated.",
+      "confidence": "Firm",
+      "category": "Protocol Security",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-01-31T18:10:27.715361",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 15:10:20 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_test_u2main=bus|1769872220522x386523681114149060|1769872220530x630101723815617900; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_test_u2main.sig=pS9DxIImzTTAp7y4VrU_oJCPrGw; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_u1_testmain=1769872220522x386523681114149060; path=/; secure, __cf_bm=heXWMCmAzG_RBKej8qmqvNYS.0bxSnwkm3wpVqPczCg-1769872220-1.0.1.1-GJfGW.JOgdxVZA5WgWtICITv5vP3b83n5RQOd7ZMdHvnkVWQrpZwOGFQJ4TieQX23CQE8ucj8fxi91MjJ_mhyZvLsSktZ_leqDkZXJZ8N2A; path=/; expires=Sat, 31-Jan-26 15:40:20 GMT; domain=.bubbleapps.io; HttpOnly; Secure; SameSite=None\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":81.1,\"percents\":{\"top\":{\"bubble_cpu\":40.4,\"block\":59.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.1},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":32.8,\"appserver_cache_misses_time\":0,\"redis\":17.6,\"fiber_queue\":6.5,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":58,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":25,\"fiber_queue\":111,\"blocks\":110},\"misc\":{\"userdb_results\":1,\"userdb_data\":228,\"spent_time\":4917121}}\nx-bubble-capacity-used: 0.076 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6a22a168d67154-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "ALPN negotiated: h2"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      },
+      "verified": false,
+      "verification_reason": "No verification method available for this vulnerability type"
+    },
+    {
+      "type": "Cookie Scoped to Parent Domain",
+      "severity": "Low",
+      "description": "Cookie is scoped to a parent domain, which can expand the attack surface across subdomains.",
+      "evidence": "Host=amqmalawadhi-85850.bubbleapps.io Domain=bubbleapps.io Cookie=__cf_bm=heXWMCmAzG_RBKej8qmqvNYS.0bxSnwkm3wpVqPczCg-1769872220-1.0.1.1-GJfGW.JOgdxVZA5WgWtICITv5vP3b83n5RQOd7ZMdHvnkVWQrpZwOGFQJ4TieQX23CQE8ucj8fxi91MjJ_mhyZvLsSktZ_leqDkZXJZ8N2A; path=/; expires=Sat,",
+      "recommendation": "Prefer host-only cookies (omit Domain) for session/auth cookies; isolate auth to dedicated subdomains.",
+      "confidence": "Firm",
+      "category": "Session Management",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-565"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-01-31T18:10:38.091772",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 15:10:20 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_test_u2main=bus|1769872220522x386523681114149060|1769872220530x630101723815617900; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_test_u2main.sig=pS9DxIImzTTAp7y4VrU_oJCPrGw; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_u1_testmain=1769872220522x386523681114149060; path=/; secure, __cf_bm=heXWMCmAzG_RBKej8qmqvNYS.0bxSnwkm3wpVqPczCg-1769872220-1.0.1.1-GJfGW.JOgdxVZA5WgWtICITv5vP3b83n5RQOd7ZMdHvnkVWQrpZwOGFQJ4TieQX23CQE8ucj8fxi91MjJ_mhyZvLsSktZ_leqDkZXJZ8N2A; path=/; expires=Sat, 31-Jan-26 15:40:20 GMT; domain=.bubbleapps.io; HttpOnly; Secure; SameSite=None\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":81.1,\"percents\":{\"top\":{\"bubble_cpu\":40.4,\"block\":59.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.1},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":32.8,\"appserver_cache_misses_time\":0,\"redis\":17.6,\"fiber_queue\":6.5,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":58,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":25,\"fiber_queue\":111,\"blocks\":110},\"misc\":{\"userdb_results\":1,\"userdb_data\":228,\"spent_time\":4917121}}\nx-bubble-capacity-used: 0.076 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6a22a168d67154-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "Host=amqmalawadhi-85850.bubbleapps.io Domain=bubbleapps.io Cookie=__cf_bm=heXWMCmAzG_RBKej8qmqvNYS.0bxSnwkm3wpVqPczCg-1769872220-1.0.1.1-GJfGW.JOgdxVZA5WgWtICITv5vP3b83n5RQOd7ZMdHvnkVWQrpZwOGFQJ4TieQX23CQE8ucj8fxi91MjJ_mhyZvLsSktZ_leqDkZXJZ8N2A; path=/; expires=Sat,"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      },
+      "verified": false,
+      "verification_reason": "No verification method available for this vulnerability type"
+    },
+    {
+      "type": "DOM Data Manipulation (DOM-based)",
+      "severity": "Medium",
+      "description": "Client-side code contains DOM sources and dangerous sinks which may indicate DOM-based XSS/data manipulation risk.",
+      "evidence": "Sources=1 Sinks=1",
+      "recommendation": "Avoid assigning URL-derived data into HTML sinks; use safe DOM APIs and output encoding.",
+      "confidence": "Firm",
+      "category": "Cross-Site Scripting",
+      "owasp": "A03:2021 - Injection",
+      "cwe": [
+        "CWE-79"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-01-31T18:10:38.094459",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 15:10:20 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_test_u2main=bus|1769872220522x386523681114149060|1769872220530x630101723815617900; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_test_u2main.sig=pS9DxIImzTTAp7y4VrU_oJCPrGw; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_u1_testmain=1769872220522x386523681114149060; path=/; secure, __cf_bm=heXWMCmAzG_RBKej8qmqvNYS.0bxSnwkm3wpVqPczCg-1769872220-1.0.1.1-GJfGW.JOgdxVZA5WgWtICITv5vP3b83n5RQOd7ZMdHvnkVWQrpZwOGFQJ4TieQX23CQE8ucj8fxi91MjJ_mhyZvLsSktZ_leqDkZXJZ8N2A; path=/; expires=Sat, 31-Jan-26 15:40:20 GMT; domain=.bubbleapps.io; HttpOnly; Secure; SameSite=None\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":81.1,\"percents\":{\"top\":{\"bubble_cpu\":40.4,\"block\":59.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.1},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":32.8,\"appserver_cache_misses_time\":0,\"redis\":17.6,\"fiber_queue\":6.5,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":58,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":25,\"fiber_queue\":111,\"blocks\":110},\"misc\":{\"userdb_results\":1,\"userdb_data\":228,\"spent_time\":4917121}}\nx-bubble-capacity-used: 0.076 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6a22a168d67154-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "Sources=1 Sinks=1"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      },
+      "verified": false,
+      "verification_reason": "No verification method available for this vulnerability type"
+    },
+    {
+      "type": "Cloud Resource / AWS Key Exposure",
+      "severity": "Medium",
+      "description": "Potential cloud resource identifiers or AWS credentials found in client-accessible content.",
+      "evidence": "CloudFront domain: d3dqmih97rcqmh.cloudfront.net; CloudFront domain: d1muf25xaso8hp.cloudfront.net; CloudFront domain: d3dqmih97rcqmh.cloudfront.net; CloudFront domain: d1muf25xaso8hp.cloudfront.net",
+      "recommendation": "Remove credentials from client-side code, rotate exposed keys immediately, and use short-lived credentials via server-side token exchange.",
+      "confidence": "Firm",
+      "category": "Secret Management",
+      "owasp": "A02:2021 - Cryptographic Failures",
+      "cwe": [
+        "CWE-798",
+        "CWE-200"
+      ],
+      "parameter": "",
+      "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+      "timestamp": "2026-01-31T18:10:38.100106",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://amqmalawadhi-85850.bubbleapps.io/version-test/",
+          "request": "GET /version-test/ HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 15:10:20 GMT\nContent-Type: text/html\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nx-powered-by: Express\nx-content-type-options: nosniff\nset-cookie: amqmalawadhi-85850_test_u2main=bus|1769872220522x386523681114149060|1769872220530x630101723815617900; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_test_u2main.sig=pS9DxIImzTTAp7y4VrU_oJCPrGw; path=/; expires=Tue, 03 Feb 2026 15:10:20 GMT; secure; httponly, amqmalawadhi-85850_u1_testmain=1769872220522x386523681114149060; path=/; secure, __cf_bm=heXWMCmAzG_RBKej8qmqvNYS.0bxSnwkm3wpVqPczCg-1769872220-1.0.1.1-GJfGW.JOgdxVZA5WgWtICITv5vP3b83n5RQOd7ZMdHvnkVWQrpZwOGFQJ4TieQX23CQE8ucj8fxi91MjJ_mhyZvLsSktZ_leqDkZXJZ8N2A; path=/; expires=Sat, 31-Jan-26 15:40:20 GMT; domain=.bubbleapps.io; HttpOnly; Secure; SameSite=None\nreferrer-policy: origin\nx-frame-options: DENY\ncontent-security-policy: frame-ancestors 'none';\ncache-control: no-store\nx-bubble-perf: {\"total\":81.1,\"percents\":{\"top\":{\"bubble_cpu\":40.4,\"block\":59.3,\"capacity_rl\":0,\"other_pause\":0,\"pre_fiber\":1.1},\"sub\":{\"pp_userdb\":0,\"pp_wait_userdb\":0,\"http_request\":0,\"serverjson\":32.8,\"appserver_cache_misses_time\":0,\"redis\":17.6,\"fiber_queue\":6.5,\"capacity_wait\":0}},\"counts\":{\"pp_userdb\":0,\"http_request\":0,\"derived_build\":0,\"derived_cache_attempts\":10,\"derived_cache_memory_misses\":10,\"serverjson\":58,\"appserver_cache_attempts\":1,\"appserver_mem_cache_hits\":0,\"appserver_cache_hits\":1,\"appserver_cache_misses\":0,\"redis\":25,\"fiber_queue\":111,\"blocks\":110},\"misc\":{\"userdb_results\":1,\"userdb_data\":228,\"spent_time\":4917121}}\nx-bubble-capacity-used: 0.076 unit-seconds used\nx-bubble-capacity-limit: 0 ms slower\nvary: Accept-Encoding\ncf-cache-status: DYNAMIC\nStrict-Transport-Security: max-age=31536000\nServer: cloudflare\nCF-RAY: 9c6a22a168d67154-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "CloudFront domain: d3dqmih97rcqmh.cloudfront.net; CloudFront domain: d1muf25xaso8hp.cloudfront.net; CloudFront domain: d3dqmih97rcqmh.cloudfront.net; CloudFront domain: d1muf25xaso8hp.cloudfront.net"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      },
+      "verified": false,
+      "verification_reason": "No verification method available for this vulnerability type"
+    },
+    {
+      "type": "Inline JavaScript",
+      "severity": "Low",
+      "description": "Found 27 inline script blocks (potential CSP issues)",
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "tentative"
+      }
+    }
+  ],
+  "security_headers": {
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "Missing",
+    "X-Content-Type-Options": "nosniff",
+    "Strict-Transport-Security": "max-age=31536000",
+    "Content-Security-Policy": "frame-ancestors 'none';",
+    "Referrer-Policy": "origin",
+    "Permissions-Policy": "Missing",
+    "X-Permitted-Cross-Domain-Policies": "Missing",
+    "security_score": "5/8"
+  },
+  "ssl_analysis": {
+    "version": "TLSv1.3",
+    "cipher": [
+      "TLS_AES_256_GCM_SHA384",
+      "TLSv1.3",
+      256
+    ],
+    "certificate_subject": [],
+    "certificate_issuer": [],
+    "certificate_expiry": "Unknown",
+    "certificate_san": []
+  },
+  "information_disclosure": [],
+  "authentication_issues": [],
+  "authorization_issues": [],
+  "data_exposure": [],
+  "api_endpoints": [],
+  "forms_analysis": [],
+  "recommendations": [
+    {
+      "category": "Security Headers",
+      "priority": "High",
+      "description": "Implement missing security headers: X-XSS-Protection, Permissions-Policy, X-Permitted-Cross-Domain-Policies"
+    },
+    {
+      "category": "Bubble Security",
+      "priority": "High",
+      "description": "Review privacy rules for exposed workflow APIs"
+    }
+  ],
+  "status_code": 200,
+  "response_time": 1.090413,
+  "bubble_specific": {
+    "api_endpoints_found": [
+      "1.1/init/data?location="
+    ],
+    "workflow_exposure": [
+      "1769872220522x386523681114149060",
+      "The variable ",
+      "test",
+      "is_skeleton",
+      "error",
+      "error",
+      "pre_early_js",
+      "post_early_js",
+      "google",
+      "GET",
+      "AIzaSyAlT1MzDJL1hTzjgn_-PbAD3NQEIKjcJi4",
+      "1769872220548x1185",
+      "inKP3RYCmcurXPoS2rpoNCayx+uRaeBmbbOxsgXOTm4=",
+      "{",
+      ":false}",
+      "index",
+      "pre_run_js",
+      "post_run_js",
+      "pre_static_js",
+      "post_static_js",
+      "pre_dynamic_js",
+      "post_dynamic_js",
+      "DOMContentLoaded",
+      "error-card",
+      "style",
+      "div",
+      "POST",
+      "DOMContentLoaded",
+      "error-card",
+      "style",
+      "div",
+      "] = Date.now();\n\n\nif (!window._bubble_page_load_data) {\n  window._bubble_page_load_data = {}\n}\nif (!window._bubble_page_load_data.js_execution_timings) {\n  window._bubble_page_load_data.js_execution_timings = {}\n}\nwindow._bubble_page_load_data.js_execution_timings[",
+      "] = Date.now();\n\n\nif (!window._bubble_page_load_data) {\n  window._bubble_page_load_data = {}\n}\nif (!window._bubble_page_load_data.js_execution_timings) {\n  window._bubble_page_load_data.js_execution_timings = {}\n}\nwindow._bubble_page_load_data.js_execution_timings["
+    ],
+    "database_exposure": [
+      "pre_early_js",
+      "post_early_js",
+      "GET",
+      " + encodeURIComponent(window.location.href), true);\nxhr.send();\n})();\n\nwindow.gm_key = ",
+      "pre_run_js",
+      "post_run_js",
+      "pre_static_js",
+      "post_static_js",
+      "pre_dynamic_js",
+      "post_dynamic_js",
+      "DOMContentLoaded"
+    ],
+    "privacy_rules": []
+  },
+  "verification_summary": [
+    {
+      "verified": false,
+      "confidence": "tentative",
+      "reason": "No verification method available for this vulnerability type",
+      "original_confidence": "Firm"
+    },
+    {
+      "verified": false,
+      "confidence": "tentative",
+      "reason": "No verification method available for this vulnerability type",
+      "original_confidence": "Firm"
+    },
+    {
+      "verified": false,
+      "confidence": "tentative",
+      "reason": "No verification method available for this vulnerability type",
+      "original_confidence": "Firm"
+    },
+    {
+      "verified": false,
+      "confidence": "tentative",
+      "reason": "No verification method available for this vulnerability type",
+      "original_confidence": "Firm"
+    },
+    {
+      "verified": false,
+      "confidence": "tentative",
+      "reason": "No verification method available for this vulnerability type",
+      "original_confidence": "Firm"
+    },
+    {
+      "verified": false,
+      "confidence": "tentative",
+      "reason": "No verification method available for this vulnerability type",
+      "original_confidence": "Firm"
+    },
+    {
+      "verified": false,
+      "confidence": "tentative",
+      "reason": "No verification method available for this vulnerability type",
+      "original_confidence": "Firm"
+    },
+    {
+      "verified": false,
+      "confidence": "tentative",
+      "reason": "No verification method available for this vulnerability type",
+      "original_confidence": "Firm"
+    }
+  ]
+}

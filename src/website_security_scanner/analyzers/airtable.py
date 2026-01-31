@@ -4,7 +4,8 @@ Airtable Security Analyzer
 Low-Code Platform Security Scanner
 
 Specialized analyzer for Airtable applications with platform-specific
-vulnerability detection.
+vulnerability detection and comprehensive traditional web vulnerability
+scanning (XSS, SQLi, CSRF, Open Redirect, etc.).
 
 Author: Bachelor Thesis Project - Low-Code Platforms Security Analysis
 """
@@ -19,6 +20,12 @@ from bs4 import BeautifulSoup
 
 from .base import BaseAnalyzer
 from .advanced_checks import AdvancedChecksMixin
+from .vulnerability_detection import (
+    XSSDetector,
+    SQLInjectionDetector,
+    CSRFDetector,
+    OpenRedirectDetector,
+)
 
 
 class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
@@ -42,6 +49,12 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self.api_keys: List[str] = []
         self.table_schemas: List[Dict[str, Any]] = []
         self.permission_models: List[Dict[str, Any]] = []
+        
+        # Initialize vulnerability detectors
+        self.xss_detector = XSSDetector(session)
+        self.sqli_detector = SQLInjectionDetector(session)
+        self.csrf_detector = CSRFDetector(session)
+        self.redirect_detector = OpenRedirectDetector(session)
 
     def analyze(
         self, url: str, response: requests.Response, soup: BeautifulSoup
@@ -82,6 +95,9 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self._check_ajax_header_manipulation(js_content)
         self._check_hsts(response)
         self._check_content_type_options(response)
+        self._check_referrer_policy(response)
+        self._check_permissions_policy(response)
+        self._check_other_security_headers(response)
         self._check_vulnerable_dependencies(js_content)
 
         # NEW ENHANCED CHECKS - Airtable-specific missing vulnerabilities
@@ -90,6 +106,202 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
         self._check_cookie_domain_scoping(response, url)
         self._check_secret_uncached_url_input(url, response)
         self._check_dom_data_manipulation(js_content)
+
+        # COMPREHENSIVE VULNERABILITY DETECTION (Traditional Web Vulnerabilities)
+        # Cross-Site Scripting (XSS) Detection
+        xss_vulns = self.xss_detector.detect_reflected_xss(url, response, html_content)
+        for vuln in xss_vulns:
+            evidence = f"Parameter: {vuln['parameter']}, Context: {vuln['context']}"
+            self.add_enriched_vulnerability(
+                vuln['type'],
+                vuln['severity'],
+                f"{vuln['type']} detected in parameter '{vuln['parameter']}'",
+                evidence,
+                "Implement output encoding, input validation, and Content Security Policy",
+                category="Cross-Site Scripting",
+                owasp="A03:2021 - Injection",
+                cwe=["CWE-79"],
+                background="Cross-Site Scripting (XSS) occurs when untrusted data is included in web pages without proper validation or escaping, allowing attackers to execute malicious scripts in victims' browsers.",
+                impact="XSS can lead to session hijacking, defacement, malware distribution, data theft, and credential harvesting. Attackers can impersonate users, perform actions on their behalf, and steal sensitive data.",
+                references=[
+                    "https://owasp.org/www-community/attacks/xss/",
+                    "https://cwe.mitre.org/data/definitions/79.html",
+                    "https://portswigger.net/web-security/cross-site-scripting"
+                ]
+            )
+
+        # DOM-based XSS Detection
+        dom_xss_vulns = self.xss_detector.detect_dom_xss(url, js_content)
+        for vuln in dom_xss_vulns:
+            evidence = f"Source: {vuln['source']}, Sink: {vuln['sink']}"
+            self.add_enriched_vulnerability(
+                vuln['type'],
+                vuln['severity'],
+                f"{vuln['type']} detected via DOM manipulation",
+                evidence,
+                "Avoid using dangerous DOM sinks with user-controlled data; use safe DOM APIs and validate input",
+                category="Cross-Site Scripting",
+                owasp="A03:2021 - Injection",
+                cwe=["CWE-79"],
+                background="DOM-based XSS vulnerabilities occur when the DOM is modified in an unsafe way using untrusted data from sources like location.hash or document.URL.",
+                impact="DOM-based XSS is particularly dangerous as it bypasses server-side protections. Attackers can execute arbitrary JavaScript in the victim's browser context.",
+                references=[
+                    "https://owasp.org/www-community/attacks/DOM_Based_XSS",
+                    "https://portswigger.net/web-security/cross-site-scripting/dom-based"
+                ]
+            )
+
+        # SQL Injection Detection
+        sqli_vulns = self.sqli_detector.detect_sql_injection(url, response)
+        for vuln in sqli_vulns:
+            if vuln['type'] == 'SQL Injection':
+                evidence = f"Parameter: {vuln.get('parameter', 'unknown')}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability detected in parameter '{vuln.get('parameter', 'unknown')}'",
+                    evidence,
+                    "Use parameterized queries, prepared statements, and input validation. Never concatenate user input into SQL queries.",
+                    category="Injection",
+                    owasp="A03:2021 - Injection",
+                    cwe=["CWE-89"],
+                    background="SQL Injection occurs when untrusted user input is included in SQL queries without proper sanitization, allowing attackers to manipulate database queries.",
+                    impact="SQL injection can lead to data breaches, data loss, authentication bypass, privilege escalation, and in severe cases, complete server compromise.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/SQL_Injection",
+                        "https://cwe.mitre.org/data/definitions/89.html",
+                        "https://portswigger.net/web-security/sql-injection"
+                    ]
+                )
+            elif vuln['type'] == 'SQL Error Disclosure':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Database error messages are being disclosed to users",
+                    "SQL error patterns found in response",
+                    "Configure database error handling to display generic messages to users. Log detailed errors server-side.",
+                    category="Information Disclosure",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-209"],
+                    background="SQL error messages can reveal database structure, table names, column names, and implementation details to attackers.",
+                    impact="SQL error disclosure assists attackers in crafting more precise SQL injection attacks and understanding the database schema.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/209.html",
+                        "https://owasp.org/www-project-web-security-testing-guide/"
+                    ]
+                )
+
+        # CSRF Detection (CRITICAL for Airtable - Burp found 28 instances)
+        csrf_vulns = self.csrf_detector.detect_csrf(url, response, soup)
+        for vuln in csrf_vulns:
+            if vuln['type'] == 'Cross-Site Request Forgery (CSRF)':
+                evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Missing: {vuln['missing_protection']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability in form {vuln['form_index']}",
+                    evidence,
+                    "Implement anti-CSRF tokens in all state-changing forms. Verify SameSite cookie attributes. Use CSRF protection headers.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="CSRF attacks force authenticated users to execute unwanted actions on a web application without their consent.",
+                    impact="CSRF can lead to unauthorized transactions, password changes, email modifications, data deletion, and privilege escalation. Airtable's state-changing operations are particularly at risk.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/csrf",
+                        "https://cwe.mitre.org/data/definitions/352.html",
+                        "https://portswigger.net/web-security/csrf"
+                    ]
+                )
+            elif vuln['type'] == 'Weak CSRF Protection':
+                evidence = f"Form: {vuln['form_method']} {vuln['form_action']}, Issue: {vuln['issue']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} in form {vuln['form_index']}",
+                    evidence,
+                    "Implement SameSite=Strict or SameSite=Lax cookies. Use double-submit cookie pattern or custom CSRF tokens.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="Weak CSRF protection may not prevent all CSRF attack vectors, especially in cross-origin scenarios.",
+                    impact="Weak CSRF protection can still allow attackers to perform unauthorized actions on behalf of authenticated users, compromising data integrity.",
+                    references=[
+                        "https://owasp.org/www-community/attacks/csrf",
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite"
+                    ]
+                )
+            elif vuln['type'] == 'API CSRF Vulnerability':
+                evidence = f"Method: {vuln['method']}, Issue: {vuln['issue']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} in API endpoint",
+                    evidence,
+                    "Implement CSRF tokens, verify Origin/Referer headers, or use custom headers like X-Requested-With for state-changing API calls.",
+                    category="Cross-Site Request Forgery",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-352"],
+                    background="API endpoints may be vulnerable to CSRF if they don't implement proper CSRF protection mechanisms.",
+                    impact="API CSRF vulnerabilities can lead to unauthorized API calls, data modification, and privilege escalation. This is critical for Airtable's REST API.",
+                    references=[
+                        "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
+                    ]
+                )
+
+        # Open Redirect Detection
+        redirect_vulns = self.redirect_detector.detect_open_redirect(url, response, soup)
+        for vuln in redirect_vulns:
+            if vuln['type'] == 'Open Redirect':
+                evidence = f"Parameter: {vuln['parameter']}"
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    f"{vuln['type']} vulnerability detected in parameter '{vuln['parameter']}'",
+                    evidence,
+                    "Validate and whitelist redirect URLs. Use relative URLs where possible. Avoid using user input for redirect destinations.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="Open redirect vulnerabilities occur when an application accepts user-controllable input that specifies a redirect URL without proper validation.",
+                    impact="Attackers can redirect users to phishing sites, malware distribution, or malicious content, bypassing URL filtering and trust indicators.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html",
+                        "https://owasp.org/www-project-web-security-testing-guide/"
+                    ]
+            )
+            elif vuln['type'] == 'Open Redirect via Meta Refresh':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Open redirect via meta refresh tag detected",
+                    "Meta refresh with user-controlled URL parameter",
+                    "Validate redirect URLs before using them in meta refresh tags. Use server-side redirects with proper validation.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="Meta refresh tags can be abused for open redirect attacks if they incorporate user-controlled input.",
+                    impact="Similar to standard open redirects, this can be used for phishing and malware distribution, exploiting user trust.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html"
+                    ]
+                )
+            elif vuln['type'] == 'Potential Open Redirect via JavaScript':
+                self.add_enriched_vulnerability(
+                    vuln['type'],
+                    vuln['severity'],
+                    "Potential open redirect via JavaScript detected",
+                    "JavaScript redirect code with user input",
+                    "Review JavaScript redirect code to ensure URLs are validated and sanitized before use.",
+                    category="URL Redirection",
+                    owasp="A01:2021 - Broken Access Control",
+                    cwe=["CWE-601"],
+                    background="JavaScript-based redirects can be exploited for phishing if they incorporate user-controlled input without validation.",
+                    impact="Attackers can craft malicious URLs that redirect victims to phishing sites or malicious content, exploiting user trust.",
+                    references=[
+                        "https://cwe.mitre.org/data/definitions/601.html"
+                    ]
+                )
 
         return {
             "base_ids": self.base_ids,
@@ -352,33 +564,43 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
 
     def _check_session_tokens_in_url(self, url: str):
         """Check for session tokens in URL"""
-        if re.search(r'[?&](session|token|sid)=', url, re.IGNORECASE):
+        # More comprehensive list of session/auth related parameters
+        token_params = [
+            "session", "token", "sid", "auth", "state", "nonce", "code",
+            "access_token", "id_token", "session_id", "session_code"
+        ]
+        pattern = r'[?&](' + '|'.join(token_params) + r')='
+        
+        if re.search(pattern, url, re.IGNORECASE):
             # Create evidence pattern for session token highlighting
             session_evidence = {
                 "type": "regex",
-                "pattern": r"(?i)[?&](session|token|sid)=[^&\s]*"
+                "pattern": r"(?i)[?&](" + "|".join(token_params) + r")=[^&\s]*"
             }
             
             self.add_enriched_vulnerability(
                 "Session Token in URL",
                 "Medium",
-                "Session token found in URL",
+                "Session token or authentication parameter found in URL query string",
                 session_evidence,
-                "Use secure cookies for session management",
+                "Use secure, HttpOnly cookies for session management and pass authentication tokens in the Authorization header or POST body.",
                 category="Session Management",
                 owasp="A07:2021 - Identification and Authentication Failures",
-                cwe=["CWE-384"],
+                cwe=["CWE-598", "CWE-523"],
                 background=(
-                    "Putting session IDs or tokens in URLs is insecure because URLs are logged in many places (browser history, "
-                    "server logs, analytics tools) and can be leaked via referrer headers."
+                    "Putting session IDs, authentication tokens, or OAuth2 state/nonce parameters in URLs is insecure "
+                    "because URLs are logged in many places (browser history, server logs, analytics tools, SIEM) "
+                    "and can be leaked via Referer headers to third-party sites."
                 ),
                 impact=(
-                    "If an attacker obtains such a URL, they may be able to hijack active user sessions and access the Airtable "
-                    "application with that user's privileges."
+                    "If an attacker obtains such a URL from logs or via Referer headers, they may be able to hijack "
+                    "active user sessions, perform replay attacks, or bypass authentication to access the Airtable "
+                    "application with the victim's privileges."
                 ),
                 references=[
                     "https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url",
-                    "https://cwe.mitre.org/data/definitions/384.html",
+                    "https://cwe.mitre.org/data/definitions/598.html",
+                    "https://cwe.mitre.org/data/definitions/523.html",
                 ],
             )
 
@@ -427,38 +649,65 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     )
 
     def _check_cookie_security(self, response: requests.Response):
-        """Check cookie security headers"""
-        cookies = response.headers.get("Set-Cookie", "")
-        if "Secure" not in cookies:
+        """Check cookie security attributes"""
+        set_cookies = response.headers.get("Set-Cookie", "")
+        if not set_cookies:
+            return
+
+        # Check for missing Secure attribute on cookies in HTTPS sessions
+        if "Secure" not in set_cookies:
             # Create evidence pattern to highlight Set-Cookie header lines
             cookie_evidence = {
                 "type": "regex",
-                "pattern": r"(?i)^Set-Cookie:.*(session|auth|token|sid|cookie)[^\n]*",
+                "pattern": r"(?i)^Set-Cookie:.*",
             }
             
             self.add_enriched_vulnerability(
-                "Insecure Cookie",
-                "Medium",
-                "Cookie lacks Secure flag",
-                cookie_evidence,  # Pass evidence as 4th positional parameter
-                "Set Secure flag for cookies",
+                "Cookie Without Secure Attribute",
+                "Low",
+                "Cookie lacks the 'Secure' attribute",
+                cookie_evidence,
+                "Set the 'Secure' attribute for all cookies. Ensure the application is only served over HTTPS.",
                 category="Session Management",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-614"],
                 background=(
-                    "The Secure flag is a critical cookie attribute that ensures cookies are only transmitted "
-                    "over HTTPS connections. Without this flag, cookies can be sent over unencrypted HTTP, "
-                    "making them vulnerable to interception and session hijacking attacks."
+                    "The 'Secure' attribute instructs the browser to only transmit the cookie over encrypted (HTTPS) connections. "
+                    "When this attribute is missing, the cookie may be sent over unencrypted HTTP, making it vulnerable to interception."
                 ),
                 impact=(
-                    "Cookies without the Secure flag can be intercepted by attackers monitoring network traffic, "
-                    "leading to session hijacking, unauthorized access to user accounts, and potential data "
-                    "breaches. This is particularly dangerous on public WiFi networks and other insecure connections."
+                    "Insecure cookies can be intercepted by an attacker using man-in-the-middle (MITM) techniques "
+                    "on insecure networks (like public Wi-Fi), leading to session hijacking and unauthorized account access."
                 ),
                 references=[
-                    "https://owasp.org/www-project-cheat-sheets/cheatsheets/Session_Management_Cheat_Sheet.html",
                     "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#Secure",
                     "https://cwe.mitre.org/data/definitions/614.html",
+                    "https://owasp.org/www-community/vulnerabilities/Insecure_Cookie"
+                ],
+            )
+
+        # Check for missing HttpOnly attribute
+        if "HttpOnly" not in set_cookies:
+            self.add_enriched_vulnerability(
+                "Cookie Without HttpOnly Attribute",
+                "Low",
+                "Cookie lacks the 'HttpOnly' attribute",
+                {"type": "regex", "pattern": r"(?i)^Set-Cookie:.*"},
+                "Set the 'HttpOnly' attribute for all sensitive cookies to prevent client-side script access.",
+                category="Session Management",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-1004"],
+                background=(
+                    "The 'HttpOnly' attribute prevents client-side scripts (like JavaScript) from accessing the cookie, "
+                    "which is a critical defense against session theft via Cross-Site Scripting (XSS)."
+                ),
+                impact=(
+                    "If an XSS vulnerability exists, an attacker can steal the session cookie and hijack the user's "
+                    "session if the 'HttpOnly' attribute is missing."
+                ),
+                references=[
+                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#HttpOnly",
+                    "https://cwe.mitre.org/data/definitions/1004.html"
                 ],
             )
 
@@ -470,58 +719,99 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                 "Missing Content Security Policy",
                 "Low",
                 "No CSP header found",
-                [],  # Pass evidence as 4th positional parameter
-                "Implement Content Security Policy",
+                [],
+                "Implement a strong Content Security Policy to mitigate XSS and other injection attacks.",
                 category="Security Headers",
                 owasp="A05:2021 - Security Misconfiguration",
                 cwe=["CWE-693"],
                 background=(
-                    "Content Security Policy (CSP) is a security layer that helps detect and mitigate "
-                    "certain types of attacks, including Cross-Site Scripting (XSS) and data injection attacks. "
-                    "Without a CSP, browsers have more freedom in interpreting and executing content from various sources."
+                    "Content Security Policy (CSP) is an added layer of security that helps to detect and mitigate certain types of attacks, "
+                    "including Cross-Site Scripting (XSS) and data injection attacks."
                 ),
                 impact=(
-                    "Missing CSP allows XSS attacks to succeed more easily, enables data injection attacks, "
-                    "and provides attackers with more vectors to exploit web application vulnerabilities. "
-                    "This can lead to session hijacking, data theft, and unauthorized actions on behalf of users."
+                    "The absence of a CSP makes the application more vulnerable to XSS attacks, as it allows the browser to execute "
+                    "any script from any source, including malicious ones injected by an attacker."
                 ),
                 references=[
                     "https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP",
-                    "https://owasp.org/www-project-cheat-sheets/cheatsheets/Content_Security_Policy_Cheat_Sheet.html",
-                    "https://cwe.mitre.org/data/definitions/693.html",
+                    "https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html"
                 ],
             )
         else:
-            # Check for weak CSP - highlight the actual CSP header
-            weak_patterns = ["unsafe-inline", "unsafe-eval", "*", "data:"]
-            if any(weak in csp.lower() for weak in weak_patterns):
-                csp_evidence = {
-                    "type": "exact",
-                    "pattern": f"Content-Security-Policy: {csp}",
-                }
+            # Check for unsafe-inline in script-src or style-src
+            csp_lower = csp.lower()
+            if "unsafe-inline" in csp_lower:
+                severity = "Medium"
+                description = "Content Security Policy contains 'unsafe-inline' directive"
                 
+                if "style-src" in csp_lower and "unsafe-inline" in csp_lower:
+                    description += ", allowing arbitrary style execution"
+                    
                 self.add_enriched_vulnerability(
                     "Weak Content Security Policy",
-                    "Medium",
-                    f"CSP contains weak directives: {csp[:100]}...",
-                    csp_evidence,  # Pass evidence as 4th positional parameter
-                    "Remove unsafe directives from CSP",
+                    severity,
+                    description,
+                    {"type": "exact", "pattern": f"Content-Security-Policy: {csp[:200]}"},
+                    "Remove 'unsafe-inline' from CSP directives. Use nonces or hashes instead.",
+                    category="Security Headers",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-693", "CWE-116", "CWE-79"],
+                    background=(
+                        "Using 'unsafe-inline' in CSP allows the execution of inline scripts or styles, which significantly "
+                        "weakens the security provided by CSP. Specifically, 'unsafe-inline' in style-src can allow an attacker "
+                        "to perform style-based data exfiltration."
+                    ),
+                    impact=(
+                        "An attacker can bypass CSP protections to execute malicious scripts (if in script-src) or "
+                        "manipulate page styles to exfiltrate sensitive data or perform UI redressing."
+                    ),
+                    references=[
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src",
+                        "https://portswigger.net/research/blind-css-exfiltration"
+                    ],
+                )
+            
+            # Check for missing form-action (allows form hijacking)
+            if "form-action" not in csp_lower:
+                self.add_enriched_vulnerability(
+                    "Weak Content Security Policy",
+                    "Low",
+                    "CSP lacks 'form-action' directive, allowing potential form hijacking",
+                    {"type": "exact", "pattern": f"Content-Security-Policy: {csp[:200]}"},
+                    "Add a 'form-action' directive to your CSP to restrict where forms can be submitted.",
                     category="Security Headers",
                     owasp="A05:2021 - Security Misconfiguration",
                     cwe=["CWE-693"],
                     background=(
-                        "Content Security Policy should avoid unsafe directives like 'unsafe-inline' and 'unsafe-eval' "
-                        "which defeat the purpose of CSP by allowing inline scripts and dynamic code execution."
+                        "The 'form-action' directive restricts the URLs which can be used as the target of a form submission from a given context. "
+                        "Without this directive, forms can be hijacked via HTML injection to send sensitive data to an attacker's server."
                     ),
                     impact=(
-                        "Weak CSP directives allow XSS attacks to bypass protections, making the policy ineffective "
-                        "against code injection attacks. This provides a false sense of security while remaining vulnerable."
+                        "An attacker with HTML injection capabilities could hijack forms on the page to steal user credentials or other "
+                        "sensitive information submitted via forms."
                     ),
                     references=[
-                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP",
-                        "https://owasp.org/www-project-cheat-sheets/cheatsheets/Content_Security_Policy_Cheat_Sheet.html",
-                        "https://cwe.mitre.org/data/definitions/693.html",
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/form-action",
+                        "https://portswigger.net/web-security/cross-site-scripting/content-security-policy"
                     ],
+                )
+            
+            # Check for other weak patterns
+            weak_patterns = ["unsafe-eval", "*", "data:"]
+            found_weak = [p for p in weak_patterns if p in csp_lower]
+            if found_weak:
+                self.add_enriched_vulnerability(
+                    "Weak Content Security Policy",
+                    "Low",
+                    f"CSP contains weak directives: {', '.join(found_weak)}",
+                    {"type": "exact", "pattern": f"Content-Security-Policy: {csp[:200]}"},
+                    "Review and tighten CSP directives to follow the principle of least privilege.",
+                    category="Security Headers",
+                    owasp="A05:2021 - Security Misconfiguration",
+                    cwe=["CWE-693"],
+                    background="Weak CSP directives like '*' or 'unsafe-eval' provide limited protection against sophisticated attacks.",
+                    impact="Attackers may be able to bypass CSP to execute arbitrary code or load malicious resources.",
+                    references=["https://csp-evaluator.withgoogle.com/"]
                 )
 
     def _check_clickjacking(self, response: requests.Response):
@@ -591,9 +881,14 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
             r'exception[:\s]+["\']([^"\']+)["\']',
             r'stack\s*trace',
         ]
+        
+        # Email address pattern
+        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
 
+        content = js_content + html_content
+        
         for pattern in error_patterns:
-            if re.search(pattern, js_content + html_content, re.IGNORECASE):
+            if re.search(pattern, content, re.IGNORECASE):
                 # Create evidence pattern for error highlighting
                 error_evidence = {
                     "type": "regex",
@@ -625,6 +920,25 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     ],
                 )
                 break
+
+        # Check for email disclosure
+        emails = re.findall(email_pattern, content)
+        if emails:
+            # Filter out common false positives if necessary
+            unique_emails = list(set(emails))[:5]  # Limit to 5
+            self.add_enriched_vulnerability(
+                "Email Address Disclosure",
+                "Info",
+                f"Email addresses found in response: {', '.join(unique_emails)}",
+                {"type": "regex", "pattern": email_pattern},
+                "Review if these email addresses should be publicly visible and implement masking if necessary.",
+                category="Information Disclosure",
+                owasp="A01:2021 - Broken Access Control",
+                cwe=["CWE-200"],
+                background="Disclosure of email addresses can facilitate phishing attacks and reconnaissance.",
+                impact="Attackers can use discovered email addresses for targeted phishing or social engineering attacks.",
+                references=["https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/03-Identity_Management_Testing/01-Test_Role_Definitions"]
+            )
 
     def _check_reflected_input(self, url: str, response: requests.Response, html_content: str):
         """Check for reflected input (potential XSS)"""
@@ -891,6 +1205,114 @@ class AirtableAnalyzer(AdvancedChecksMixin, BaseAnalyzer):
                     "https://owasp.org/www-project-cheat-sheets/cheatsheets/HTTP_Headers_Cheat_Sheet.html",
                     "https://cwe.mitre.org/data/definitions/173.html",
                 ],
+            )
+
+    def _check_referrer_policy(self, response: requests.Response):
+        """Check Referrer-Policy header"""
+        rp = response.headers.get("Referrer-Policy", "")
+        if not rp:
+            self.add_enriched_vulnerability(
+                "Missing Referrer-Policy Header",
+                "Low",
+                "No Referrer-Policy header found",
+                [],
+                "Implement a secure Referrer-Policy, such as 'strict-origin-when-cross-origin'.",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-116"],
+                background=(
+                    "The Referrer-Policy header controls how much referrer information (sent via the Referer header) "
+                    "should be included with requests. Without this header, browsers may leak sensitive information "
+                    "in the URL (like session tokens or IDs) to third-party sites."
+                ),
+                impact=(
+                    "Missing Referrer-Policy can lead to information disclosure, where sensitive data contained in "
+                    "URLs is leaked to third-party websites when a user clicks a link or when the page loads "
+                    "third-party resources."
+                ),
+                references=[
+                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy",
+                    "https://owasp.org/www-project-cheat-sheets/cheatsheets/HTTP_Headers_Cheat_Sheet.html#referrer-policy"
+                ],
+            )
+        elif rp.lower() in ["unsafe-url", "no-referrer-when-downgrade"]:
+             self.add_enriched_vulnerability(
+                "Weak Referrer-Policy Configuration",
+                "Low",
+                f"Weak Referrer-Policy value: {rp}",
+                {"type": "exact", "pattern": f"Referrer-Policy: {rp}"},
+                "Use a more secure Referrer-Policy like 'no-referrer' or 'strict-origin-when-cross-origin'.",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-116"],
+                background="Weak Referrer-Policy values may leak full URLs including query parameters to third-party sites.",
+                impact="Sensitive information in the URL can be disclosed to third-party sites.",
+                references=["https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy"]
+            )
+
+    def _check_permissions_policy(self, response: requests.Response):
+        """Check Permissions-Policy header"""
+        pp = response.headers.get("Permissions-Policy", "")
+        if not pp:
+            self.add_enriched_vulnerability(
+                "Missing Permissions-Policy Header",
+                "Low",
+                "No Permissions-Policy header found",
+                [],
+                "Implement a Permissions-Policy to control which browser features are available.",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-16"],
+                background=(
+                    "Permissions-Policy (formerly Feature-Policy) allows web developers to selectively enable, "
+                    "disable, and modify the behavior of certain APIs and web features in the browser."
+                ),
+                impact=(
+                    "Absence of Permissions-Policy allows all supported features to be used, increasing the attack "
+                    "surface if the site is compromised or if it embeds untrusted third-party content."
+                ),
+                references=[
+                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy",
+                    "https://w3c.github.io/webappsec-permissions-policy/"
+                ],
+            )
+
+    def _check_other_security_headers(self, response: requests.Response):
+        """Check for other common security headers"""
+        headers = response.headers
+        
+        # X-XSS-Protection
+        xxp = headers.get("X-XSS-Protection", "")
+        if not xxp:
+             self.add_enriched_vulnerability(
+                "Missing X-XSS-Protection Header",
+                "Info",
+                "No X-XSS-Protection header found",
+                [],
+                "Implement X-XSS-Protection: 0 to disable the legacy browser XSS filter, or use CSP instead.",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-693"],
+                background="The X-XSS-Protection header is a legacy feature that enabled the browser's reflected XSS filter. Most modern browsers now recommend disabling it in favor of a strong CSP.",
+                impact="Minimal impact in modern browsers, but its absence may be flagged in compliance audits.",
+                references=["https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection"]
+            )
+
+        # X-Permitted-Cross-Domain-Policies
+        xpcdp = headers.get("X-Permitted-Cross-Domain-Policies", "")
+        if not xpcdp:
+            self.add_enriched_vulnerability(
+                "Missing X-Permitted-Cross-Domain-Policies Header",
+                "Info",
+                "No X-Permitted-Cross-Domain-Policies header found",
+                [],
+                "Implement X-Permitted-Cross-Domain-Policies: none if you don't use Flash or PDF across domains.",
+                category="Security Headers",
+                owasp="A05:2021 - Security Misconfiguration",
+                cwe=["CWE-16"],
+                background="This header tells clients like Flash and Adobe Reader what cross-domain policies are allowed for the site.",
+                impact="Minimal impact unless the application serves Flash or PDF content to cross-domain clients.",
+                references=["https://owasp.org/www-project-secure-headers/index.html#x-permitted-cross-domain-policies"]
             )
 
     def _check_vulnerable_dependencies(self, js_content: str):

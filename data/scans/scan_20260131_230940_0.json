@@ -1,0 +1,289 @@
+{
+  "url": "https://mern-ust-project-2026-2.onrender.com/",
+  "timestamp": "2026-01-31T23:09:40.296159",
+  "platform_type": "unknown",
+  "vulnerabilities": [
+    {
+      "type": "Insecure Cookie",
+      "severity": "Medium",
+      "description": "Cookie lacks Secure flag",
+      "evidence": "",
+      "recommendation": "Set Secure flag for cookies",
+      "confidence": "Firm",
+      "category": "Session Management",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-614"
+      ],
+      "parameter": "",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "timestamp": "2026-01-31T23:09:41.110116",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://mern-ust-project-2026-2.onrender.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 20:09:38 GMT\nContent-Type: text/html; charset=utf-8\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nCache-Control: public, max-age=0, s-maxage=300\netag: W/\"43293dde093edad162889bce63e5de14\"\nlast-modified: Sat, 10 Jan 2026 14:46:55 UTC\nstrict-transport-security: max-age=315360000; includeSubdomains; preload\nvary: Accept-Encoding, Accept-Encoding\nx-content-type-options: nosniff\nCF-Cache-Status: HIT\nAge: 279\nServer: cloudflare\nCF-RAY: 9c6bd90e6e6157f8-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Cookie Missing HttpOnly",
+      "severity": "Low",
+      "description": "Cookie lacks HttpOnly flag",
+      "evidence": "",
+      "recommendation": "Set HttpOnly flag for cookies",
+      "confidence": "Firm",
+      "category": "Session Management",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-1007"
+      ],
+      "parameter": "",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "timestamp": "2026-01-31T23:09:41.110714",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://mern-ust-project-2026-2.onrender.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 20:09:38 GMT\nContent-Type: text/html; charset=utf-8\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nCache-Control: public, max-age=0, s-maxage=300\netag: W/\"43293dde093edad162889bce63e5de14\"\nlast-modified: Sat, 10 Jan 2026 14:46:55 UTC\nstrict-transport-security: max-age=315360000; includeSubdomains; preload\nvary: Accept-Encoding, Accept-Encoding\nx-content-type-options: nosniff\nCF-Cache-Status: HIT\nAge: 279\nServer: cloudflare\nCF-RAY: 9c6bd90e6e6157f8-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing Content Security Policy",
+      "severity": "Low",
+      "description": "No CSP header found",
+      "evidence": "",
+      "recommendation": "Implement Content Security Policy",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-693"
+      ],
+      "parameter": "",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "timestamp": "2026-01-31T23:09:41.111585",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://mern-ust-project-2026-2.onrender.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 20:09:38 GMT\nContent-Type: text/html; charset=utf-8\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nCache-Control: public, max-age=0, s-maxage=300\netag: W/\"43293dde093edad162889bce63e5de14\"\nlast-modified: Sat, 10 Jan 2026 14:46:55 UTC\nstrict-transport-security: max-age=315360000; includeSubdomains; preload\nvary: Accept-Encoding, Accept-Encoding\nx-content-type-options: nosniff\nCF-Cache-Status: HIT\nAge: 279\nServer: cloudflare\nCF-RAY: 9c6bd90e6e6157f8-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Missing Clickjacking Protection",
+      "severity": "Low",
+      "description": "No X-Frame-Options header",
+      "evidence": "",
+      "recommendation": "Implement X-Frame-Options header",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-693"
+      ],
+      "parameter": "",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "timestamp": "2026-01-31T23:09:41.112003",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://mern-ust-project-2026-2.onrender.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 20:09:38 GMT\nContent-Type: text/html; charset=utf-8\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nCache-Control: public, max-age=0, s-maxage=300\netag: W/\"43293dde093edad162889bce63e5de14\"\nlast-modified: Sat, 10 Jan 2026 14:46:55 UTC\nstrict-transport-security: max-age=315360000; includeSubdomains; preload\nvary: Accept-Encoding, Accept-Encoding\nx-content-type-options: nosniff\nCF-Cache-Status: HIT\nAge: 279\nServer: cloudflare\nCF-RAY: 9c6bd90e6e6157f8-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Cacheable HTTPS Response",
+      "severity": "Low",
+      "description": "HTTPS response may be cached",
+      "evidence": "public, max-age=0, s-maxage=300",
+      "recommendation": "Implement proper cache control for sensitive pages",
+      "confidence": "Firm",
+      "category": "Security Headers",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-525"
+      ],
+      "parameter": "",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "timestamp": "2026-01-31T23:09:41.112636",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://mern-ust-project-2026-2.onrender.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 20:09:38 GMT\nContent-Type: text/html; charset=utf-8\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nCache-Control: public, max-age=0, s-maxage=300\netag: W/\"43293dde093edad162889bce63e5de14\"\nlast-modified: Sat, 10 Jan 2026 14:46:55 UTC\nstrict-transport-security: max-age=315360000; includeSubdomains; preload\nvary: Accept-Encoding, Accept-Encoding\nx-content-type-options: nosniff\nCF-Cache-Status: HIT\nAge: 279\nServer: cloudflare\nCF-RAY: 9c6bd90e6e6157f8-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "public, max-age=0, s-maxage=300"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Hidden HTTP/2",
+      "severity": "Info",
+      "description": "Origin advertises HTTP/2 (h2) via ALPN; ensure HTTP/2-specific hardening (HPACK/DoS controls, reverse-proxy config).",
+      "evidence": "ALPN negotiated: h2",
+      "recommendation": "Review HTTP/2 configuration at the edge (WAF/CDN/proxy), apply rate limits, and keep TLS stack updated.",
+      "confidence": "Firm",
+      "category": "Protocol Security",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "cwe": [
+        "CWE-16"
+      ],
+      "parameter": "",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "timestamp": "2026-01-31T23:09:41.640554",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://mern-ust-project-2026-2.onrender.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 20:09:38 GMT\nContent-Type: text/html; charset=utf-8\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nCache-Control: public, max-age=0, s-maxage=300\netag: W/\"43293dde093edad162889bce63e5de14\"\nlast-modified: Sat, 10 Jan 2026 14:46:55 UTC\nstrict-transport-security: max-age=315360000; includeSubdomains; preload\nvary: Accept-Encoding, Accept-Encoding\nx-content-type-options: nosniff\nCF-Cache-Status: HIT\nAge: 279\nServer: cloudflare\nCF-RAY: 9c6bd90e6e6157f8-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "ALPN negotiated: h2"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    },
+    {
+      "type": "Request URL Override",
+      "severity": "Medium",
+      "description": "Server appears to honor URL override headers, which can lead to access-control bypass in some proxy/app configurations.",
+      "evidence": "Header X-Original-URL: /admin | direct 404 vs override 200",
+      "recommendation": "Disable/strip URL override headers at the edge proxy, or ensure the application does not trust them.",
+      "confidence": "Firm",
+      "category": "Access Control",
+      "owasp": "A01:2021 - Broken Access Control",
+      "cwe": [
+        "CWE-284"
+      ],
+      "parameter": "",
+      "url": "https://mern-ust-project-2026-2.onrender.com/",
+      "timestamp": "2026-01-31T23:09:42.120570",
+      "background": "",
+      "impact": "",
+      "references": [],
+      "instances": [
+        {
+          "url": "https://mern-ust-project-2026-2.onrender.com/",
+          "request": "GET / HTTP/1.1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Security Scanner Verifier\nAccept-Encoding: gzip, deflate, zstd\nAccept: */*\nConnection: keep-alive",
+          "response": "HTTP/1.1 200 OK\nDate: Sat, 31 Jan 2026 20:09:38 GMT\nContent-Type: text/html; charset=utf-8\nTransfer-Encoding: chunked\nConnection: keep-alive\nContent-Encoding: gzip\nCache-Control: public, max-age=0, s-maxage=300\netag: W/\"43293dde093edad162889bce63e5de14\"\nlast-modified: Sat, 10 Jan 2026 14:46:55 UTC\nstrict-transport-security: max-age=315360000; includeSubdomains; preload\nvary: Accept-Encoding, Accept-Encoding\nx-content-type-options: nosniff\nCF-Cache-Status: HIT\nAge: 279\nServer: cloudflare\nCF-RAY: 9c6bd90e6e6157f8-MRS\nalt-svc: h3=\":443\"; ma=86400",
+          "evidence": [
+            "Header X-Original-URL: /admin | direct 404 vs override 200"
+          ]
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "confidence": "tentative",
+        "reason": "No verification method available for this vulnerability type",
+        "original_confidence": "Firm"
+      }
+    }
+  ],
+  "security_headers": {
+    "X-Frame-Options": "Missing",
+    "X-XSS-Protection": "Missing",
+    "X-Content-Type-Options": "nosniff",
+    "Strict-Transport-Security": "max-age=315360000; includeSubdomains; preload",
+    "Content-Security-Policy": "Missing",
+    "Referrer-Policy": "Missing",
+    "Permissions-Policy": "Missing",
+    "X-Permitted-Cross-Domain-Policies": "Missing",
+    "security_score": "2/8"
+  },
+  "ssl_analysis": {
+    "version": "TLSv1.3",
+    "cipher": [
+      "TLS_AES_256_GCM_SHA384",
+      "TLSv1.3",
+      256
+    ],
+    "certificate_subject": [],
+    "certificate_issuer": [],
+    "certificate_expiry": "Unknown",
+    "certificate_san": []
+  },
+  "information_disclosure": [],
+  "authentication_issues": [],
+  "authorization_issues": [],
+  "data_exposure": [],
+  "api_endpoints": [],
+  "forms_analysis": [],
+  "recommendations": [
+    {
+      "category": "Security Headers",
+      "priority": "High",
+      "description": "Implement missing security headers: X-Frame-Options, X-XSS-Protection, Content-Security-Policy, Referrer-Policy, Permissions-Policy, X-Permitted-Cross-Domain-Policies"
+    }
+  ],
+  "status_code": 200,
+  "response_time": 0.160911,
+  "generic_analysis": {},
+  "verification_summary": {
+    "total_vulnerabilities": 7,
+    "verified_vulnerabilities": 0,
+    "high_confidence_verifications": 0,
+    "verification_rate": 0.0
+  }
+}
