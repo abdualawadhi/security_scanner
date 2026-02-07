@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Low-Code Security Scanner - Professional Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-shield-alt text-blue-600 text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold text-gray-800">Low-Code Security Scanner</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-blue-600 font-medium">Dashboard</a>
+                    <a href="/scan" class="text-gray-600 hover:text-blue-600">New Scan</a>
+                    <a href="/reports" class="text-gray-600 hover:text-blue-600">Reports</a>
+                    <a href="/analytics" class="text-gray-600 hover:text-blue-600">Analytics</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Security Dashboard</h2>
+            <p class="text-gray-600">Comprehensive security analysis for low-code platforms</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100">
+                        <i class="fas fa-search text-blue-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Active Scans</p>
+                        <p class="text-2xl font-bold text-gray-800" id="active-scans">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-red-100">
+                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">High Severity</p>
+                        <p class="text-2xl font-bold text-gray-800" id="high-severity">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-100">
+                        <i class="fas fa-clock text-yellow-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Pending Scans</p>
+                        <p class="text-2xl font-bold text-gray-800" id="pending-scans">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Completed Today</p>
+                        <p class="text-2xl font-bold text-gray-800" id="completed-today">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Scans -->
+        <div class="bg-white rounded-lg shadow mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-800">Recent Scans</h3>
+            </div>
+            <div class="p-6">
+                <div id="recent-scans" class="space-y-4">
+                    <!-- Scans will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Vulnerability Overview -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Severity Chart -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-medium text-gray-800 mb-4">Vulnerability Severity Distribution</h3>
+                <canvas id="severityChart" width="400" height="300"></canvas>
+            </div>
+
+            <!-- Platform Distribution -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-medium text-gray-800 mb-4">Platform Distribution</h3>
+                <canvas id="platformChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- WebSocket Script -->
+    <script>
+        const socket = io();
+        let severityChartInstance = null;
+        let platformChartInstance = null;
+
+        socket.on('scan_progress', function(data) {
+            updateScanProgress(data);
+        });
+
+        socket.on('scan_error', function(data) {
+            showScanError(data);
+        });
+
+        function updateScanProgress(data) {
+            // Update scan status in UI
+            const scanElement = document.querySelector(`[data-scan-id="${data.scan_id}"]`);
+            if (scanElement) {
+                const progressBar = scanElement.querySelector('.progress-bar');
+                const statusElement = scanElement.querySelector('.scan-status');
+
+                if (progressBar) {
+                    progressBar.style.width = `${data.progress}%`;
+                }
+                if (statusElement) {
+                    statusElement.textContent = data.message;
+                }
+            }
+        }
+
+        function showScanError(data) {
+            alert(`Scan ${data.scan_id} failed: ${data.error}`);
+        }
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+
+                updateDashboardStats(data);
+                updateRecentScans(data);
+                updateCharts(data);
+            } catch (error) {
+                console.error('Failed to load dashboard data:', error);
+            }
+        }
+
+        function updateDashboardStats(data) {
+            document.getElementById('active-scans').textContent = data.active_scans || 0;
+            document.getElementById('high-severity').textContent = data.severity_breakdown?.high || 0;
+            document.getElementById('pending-scans').textContent = data.queue_length || 0;
+            document.getElementById('completed-today').textContent = data.completed_scans || 0;
+        }
+
+        function updateRecentScans(data) {
+            const recentScansContainer = document.getElementById('recent-scans');
+            
+            // For now, show a placeholder since we don't have recent scans data in /api/stats
+            if (data.total_scans === 0) {
+                recentScansContainer.innerHTML = '<p class="text-gray-500 text-center">No recent scans available</p>';
+            } else {
+                recentScansContainer.innerHTML = '<p class="text-gray-500 text-center">Recent scans feature coming soon</p>';
+            }
+        }
+
+        function updateCharts(data) {
+            // Destroy existing charts if they exist
+            if (severityChartInstance) {
+                severityChartInstance.destroy();
+            }
+            if (platformChartInstance) {
+                platformChartInstance.destroy();
+            }
+
+            // Severity chart
+            const severityData = {
+                critical: data.severity_breakdown?.critical || 0,
+                high: data.severity_breakdown?.high || 0,
+                medium: data.severity_breakdown?.medium || 0,
+                low: data.severity_breakdown?.low || 0,
+                info: data.severity_breakdown?.info || 0
+            };
+
+            const severityCtx = document.getElementById('severityChart').getContext('2d');
+            severityChartInstance = new Chart(severityCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+                    datasets: [{
+                        data: [severityData.critical, severityData.high, severityData.medium, severityData.low, severityData.info],
+                        backgroundColor: ['#dc2626', '#ef4444', '#f59e0b', '#3b82f6', '#6b7280']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Platform chart (placeholder data for now)
+            const platformData = {
+                'Bubble': 0,
+                'OutSystems': 0,
+                'Airtable': 0,
+                'Generic': 0
+            };
+
+            const platformCtx = document.getElementById('platformChart').getContext('2d');
+            platformChartInstance = new Chart(platformCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(platformData),
+                    datasets: [{
+                        label: 'Scans',
+                        data: Object.values(platformData),
+                        backgroundColor: '#3b82f6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load dashboard on page load
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+
+        // Refresh dashboard every 30 seconds
+        setInterval(loadDashboard, 30000);
+    </script>
+</body>
+</html>

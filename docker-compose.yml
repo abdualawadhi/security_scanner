@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  scanner:
+    build: .
+    container_name: website-security-scanner
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - scanner-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  scanner-data:
