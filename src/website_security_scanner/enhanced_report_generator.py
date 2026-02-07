@@ -91,6 +91,16 @@ class EnhancedReportGenerator(ProfessionalReportGenerator):
     def _generate_compliance_metrics(self, results: Dict) -> Dict[str, Any]:
         """Generate OWASP compliance metrics."""
         vulns = results.get('security_assessment', {}).get('vulnerabilities', [])
+        compliance_summary = results.get('compliance_summary') or results.get('security_assessment', {}).get('compliance_summary', {})
+        precomputed_score = None
+        precomputed_issues = None
+        if isinstance(compliance_summary, dict):
+            owasp_summary = compliance_summary.get('OWASP') or compliance_summary.get('owasp')
+            if isinstance(owasp_summary, dict):
+                if 'coverage_percentage' in owasp_summary:
+                    precomputed_score = owasp_summary.get('coverage_percentage')
+                if 'vulnerabilities_covered' in owasp_summary:
+                    precomputed_issues = owasp_summary.get('vulnerabilities_covered')
         
         owasp_coverage = {
             'A01_Broken_Access_Control': 0,
@@ -109,19 +119,17 @@ class EnhancedReportGenerator(ProfessionalReportGenerator):
         for vuln in vulns:
             category = vuln.get('category', 'General')
             categories_found.add(category)
-            
-            if category in ['Authorization', 'Authentication']:
-                owasp_coverage['A01_Broken_Access_Control'] += 1
-                owasp_coverage['A07_Identification_Failures'] += 1
-            elif category in ['Cryptography', 'SSL/TLS', 'Data Exposure']:
-                owasp_coverage['A02_Cryptographic_Failures'] += 1
-            elif category in ['SQL Injection', 'Command Injection', 'XSS']:
-                owasp_coverage['A03_Injection'] += 1
-            elif category in ['Configuration', 'Security Headers']:
-                owasp_coverage['A05_Security_Misconfiguration'] += 1
+
+            owasp_key = self._infer_owasp_key(vuln)
+            if owasp_key and owasp_key in owasp_coverage:
+                owasp_coverage[owasp_key] += 1
         
-        total_owasp_issues = sum(owasp_coverage.values())
-        compliance_score = max(0, 100 - (total_owasp_issues * 5))
+        computed_issues = sum(owasp_coverage.values())
+        total_owasp_issues = precomputed_issues if precomputed_issues is not None else computed_issues
+        if precomputed_score is not None:
+            compliance_score = precomputed_score
+        else:
+            compliance_score = max(0, 100 - (total_owasp_issues * 5))
         
         return {
             'score': round(compliance_score, 2),

@@ -273,13 +273,19 @@ class BaseAnalyzer:
             parameter: Affected parameter name (for verification)
             url: Target URL (for verification)
         """
+        if isinstance(evidence, (dict, list)):
+            evidence_list = evidence if isinstance(evidence, list) else [evidence]
+            evidence_str = str(evidence)
+        else:
+            evidence_list = [evidence] if evidence else []
+            evidence_str = evidence
         severity = self._normalize_severity(severity)
         confidence = self._normalize_confidence(confidence)
         vulnerability = {
             "type": vuln_type,
             "severity": severity,
             "description": description,
-            "evidence": evidence,
+            "evidence": evidence_str,
             "recommendation": recommendation,
             "confidence": confidence,
             "category": category,
@@ -289,6 +295,8 @@ class BaseAnalyzer:
             "url": url or (self._last_request.url if self._last_request else ""),
             "timestamp": self._get_timestamp(),
         }
+        if self._last_response is not None and "instances" not in vulnerability:
+            vulnerability["instances"] = [self._build_http_instance(evidence_list=evidence_list)]
         self.vulnerabilities.append(vulnerability)
         
         # Log vulnerability discovery

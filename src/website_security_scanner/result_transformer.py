@@ -118,6 +118,9 @@ def transform_results_for_professional_report(raw_results):
             "severity": _normalize_severity(vuln.get("severity", "info")),
             "confidence": vuln.get("confidence", "tentative"),
             "description": vuln.get("description", "No details available."),
+            "category": vuln.get("category", "General"),
+            "owasp": vuln.get("owasp", vuln.get("owasp_category", "N/A")),
+            "recommendation": vuln.get("recommendation", ""),
             "evidence": evidence_list,
             # New enriched fields for background, impact and external references
             "background": vuln.get("background"),
@@ -190,6 +193,8 @@ def transform_results_for_professional_report(raw_results):
                 "headers_present": headers_present,
                 "headers_missing": headers_missing,
                 "recommendations": raw_results.get("recommendations", []),
+                "security_score": raw_results.get("security_headers", {}).get("security_score"),
+                "raw_headers": raw_results.get("security_headers", {}),
             },
             "ssl_tls_analysis": raw_results.get("ssl_analysis", {}),
             "overall_score": raw_results.get("security_score", 100),

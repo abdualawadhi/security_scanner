@@ -447,16 +447,23 @@ def execute_scan(app, socketio, scan_id):
             if hasattr(app.scanner, 'enhanced_scan_target'):
                 results = app.scanner.enhanced_scan_target(url, use_parallel=True)
                 # Convert to basic format for compatibility
+                security_assessment = results.security_assessment or {}
                 results = {
                     'url': url,
                     'timestamp': results.timestamp,
                     'platform_type': results.platform,
                     'vulnerabilities': [vuln.to_dict() for vuln in results.vulnerability_findings],
-                    'security_assessment': results.security_assessment,
+                    'security_assessment': security_assessment,
                     'compliance_summary': results.compliance_summary,
                     'scan_metadata': results.scan_metadata,
                     'performance_metrics': results.performance_metrics
                 }
+                if security_assessment:
+                    results['security_headers'] = security_assessment.get('security_headers', {})
+                    results['ssl_analysis'] = security_assessment.get('ssl_tls_analysis', {})
+                    results['request_headers'] = security_assessment.get('request_headers', {})
+                    results['response_headers'] = security_assessment.get('response_headers', {})
+                    results['request_response'] = security_assessment.get('request_response', {})
             else:
                 results = app.scanner.scan_target(url)
         else:

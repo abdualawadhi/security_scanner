@@ -158,6 +158,13 @@ class LowCodeSecurityScanner:
             )
             target_results["status_code"] = response.status_code
             target_results["response_time"] = response.elapsed.total_seconds()
+            target_results["request_headers"] = self._normalize_headers(
+                getattr(response.request, "headers", {})
+            )
+            target_results["response_headers"] = self._normalize_headers(
+                response.headers
+            )
+            target_results["request_response"] = self._build_request_response_pair(response)
 
             # Security header analysis
             target_results["security_headers"] = self.analyze_security_headers(
@@ -318,7 +325,15 @@ class LowCodeSecurityScanner:
         
         # Perform basic scan first
         basic_results = self.scan_target(url)
-        
+
+        # Ensure security headers are preserved for enhanced reports
+        basic_security_headers = basic_results.get("security_headers")
+        if not isinstance(basic_security_headers, dict) or not basic_security_headers:
+            response_headers = basic_results.get("response_headers", {})
+            if response_headers:
+                basic_security_headers = self.analyze_security_headers(response_headers)
+                basic_results["security_headers"] = basic_security_headers
+
         # Convert to enhanced vulnerabilities
         enhanced_vulnerabilities = []
         for vuln in basic_results.get('vulnerabilities', []):
@@ -343,14 +358,23 @@ class LowCodeSecurityScanner:
             security_assessment={
                 'risk_score': self._calculate_risk_score(enhanced_vulnerabilities),
                 'severity_counts': self._get_severity_counts(enhanced_vulnerabilities),
-                'platform_risks': self._assess_platform_risks(basic_results.get('platform_type', 'Unknown'))
+                'platform_risks': self._assess_platform_risks(basic_results.get('platform_type', 'Unknown')),
+                'security_headers': basic_results.get('security_headers', {}),
+                'ssl_tls_analysis': basic_results.get('ssl_analysis', {}),
+                'request_headers': basic_results.get('request_headers', {}),
+                'response_headers': basic_results.get('response_headers', {}),
+                'request_response': basic_results.get('request_response', {}),
             },
             compliance_summary=self._generate_compliance_summary(enhanced_vulnerabilities),
             scan_metadata={
                 'scan_type': 'enhanced',
                 'plugins_used': use_plugins,
                 'parallel_used': use_parallel,
-                'plugin_count': len(plugin_results) if plugin_results else 0
+                'plugin_count': len(plugin_results) if plugin_results else 0,
+                'scan_profile': basic_results.get('scan_profile', {}),
+                'scan_profile_hash': basic_results.get('scan_profile_hash', 'N/A'),
+                'status_code': basic_results.get('status_code'),
+                'response_time': basic_results.get('response_time'),
             },
             performance_metrics={
                 'scan_duration': 0,  # Would be calculated in real implementation
@@ -521,6 +545,51 @@ class LowCodeSecurityScanner:
             return "Tentative"
         conf_map = {k.lower(): k for k in CONFIDENCE_LEVELS.keys()}
         return conf_map.get(str(confidence).lower(), "Tentative")
+
+    def _normalize_headers(self, headers: Any) -> Dict[str, str]:
+        if not headers:
+            return {}
+        try:
+            items = headers.items()
+        except Exception:
+            try:
+                items = dict(headers).items()
+            except Exception:
+                return {}
+        return {str(k): str(v) for k, v in items}
+
+    def _build_request_response_pair(self, response: requests.Response) -> Dict[str, str]:
+        req_txt = ""
+        resp_txt = ""
+
+        try:
+            request = response.request
+        except Exception:
+            request = None
+
+        if request is not None:
+            try:
+                method = getattr(request, "method", "GET")
+                path = getattr(request, "path_url", "") or getattr(request, "url", "")
+                headers = self._normalize_headers(getattr(request, "headers", {}))
+                header_text = "\n".join(f"{k}: {v}" for k, v in headers.items())
+                req_txt = f"{method} {path} HTTP/1.1\n{header_text}" if header_text else f"{method} {path} HTTP/1.1"
+            except Exception:
+                req_txt = ""
+
+        try:
+            status = response.status_code
+            reason = getattr(response, "reason", "")
+            headers = self._normalize_headers(response.headers)
+            header_text = "\n".join(f"{k}: {v}" for k, v in headers.items())
+            resp_txt = f"HTTP/1.1 {status} {reason}\n{header_text}" if header_text else f"HTTP/1.1 {status} {reason}"
+        except Exception:
+            resp_txt = ""
+
+        return {
+            "request": req_txt,
+            "response": resp_txt,
+        }
 
     def _normalize_vulnerabilities(self, vulnerabilities: List[Dict[str, Any]], url: str) -> List[Dict[str, Any]]:
         normalized: List[Dict[str, Any]] = []

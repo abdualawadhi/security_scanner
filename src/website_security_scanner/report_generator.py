@@ -4,6 +4,7 @@ Professional Security Report Generator - Burp Suite Style with Enhanced Features
 
 import json
 import base64
+import re
 from datetime import datetime
 from typing import Dict, List, Any
 
@@ -81,9 +82,161 @@ class ProfessionalReportGenerator:
             'total_vulnerabilities': len(vulnerabilities)
         }
 
+    def _extract_owasp_key(self, owasp_value: Any) -> str:
+        """Extract an OWASP Top 10 key from a vulnerability field."""
+        if not owasp_value:
+            return ""
+        if isinstance(owasp_value, list):
+            for item in owasp_value:
+                key = self._extract_owasp_key(item)
+                if key:
+                    return key
+            return ""
+        text = str(owasp_value)
+        owasp_key_map = {
+            "A01": "A01_Broken_Access_Control",
+            "A02": "A02_Cryptographic_Failures",
+            "A03": "A03_Injection",
+            "A04": "A04_Insecure_Design",
+            "A05": "A05_Security_Misconfiguration",
+            "A06": "A06_Vulnerable_Components",
+            "A07": "A07_Identification_Failures",
+            "A08": "A08_Integrity_Failures",
+            "A09": "A09_Logging_Monitoring",
+            "A10": "A10_SSRF",
+        }
+        match = re.search(r"A0[1-9]|A10", text)
+        if match:
+            code = match.group(0)
+            return owasp_key_map.get(code, "")
+        for key in owasp_key_map.values():
+            if key in text:
+                return key
+        return ""
+
+    def _infer_owasp_key(self, vuln: Dict[str, Any]) -> str:
+        """Infer OWASP Top 10 key from vulnerability fields."""
+        owasp_value = vuln.get("owasp") or vuln.get("owasp_category") or vuln.get("owasp_top10")
+        compliance = vuln.get("compliance_mappings")
+        if isinstance(compliance, dict):
+            owasp_from_compliance = compliance.get("OWASP") or compliance.get("owasp")
+            extracted = self._extract_owasp_key(owasp_from_compliance)
+            if extracted:
+                return extracted
+        extracted = self._extract_owasp_key(owasp_value)
+        if extracted:
+            return extracted
+
+        category = str(vuln.get("category", "")).lower()
+        title = str(vuln.get("title") or vuln.get("type", "")).lower()
+        description = str(vuln.get("description", "")).lower()
+        text = f"{category} {title} {description}"
+
+        keyword_map = [
+            ("A01_Broken_Access_Control", [
+                "access control", "authorization", "authz", "idor",
+                "insecure direct object", "privilege", "permission", "csrf",
+                "cross-site request forgery", "information disclosure", "data exposure"
+            ]),
+            ("A02_Cryptographic_Failures", [
+                "cryptograph", "crypto", "encryption", "ssl", "tls", "certificate"
+            ]),
+            ("A03_Injection", [
+                "sql injection", "sqli", "xss", "cross-site scripting",
+                "command injection", "template injection", "ldap injection",
+                "xpath injection", "nosql injection", "injection"
+            ]),
+            ("A04_Insecure_Design", [
+                "insecure design", "business logic", "design flaw"
+            ]),
+            ("A05_Security_Misconfiguration", [
+                "security header", "security headers", "configuration",
+                "misconfiguration", "missing header", "csp",
+                "content security policy", "hsts", "x-frame-options",
+                "x-content-type-options", "referrer-policy", "permissions-policy",
+                "x-xss-protection", "x-permitted-cross-domain-policies",
+                "cors", "cacheable https", "directory listing"
+            ]),
+            ("A06_Vulnerable_Components", [
+                "outdated", "vulnerable component", "dependency", "library", "component"
+            ]),
+            ("A07_Identification_Failures", [
+                "authentication", "session", "credential", "password", "login",
+                "mfa", "multi-factor", "cookie"
+            ]),
+            ("A08_Integrity_Failures", [
+                "integrity", "deserialization", "supply chain", "code signing"
+            ]),
+            ("A09_Logging_Monitoring", [
+                "logging", "monitoring", "audit", "alert"
+            ]),
+            ("A10_SSRF", [
+                "ssrf", "server-side request forgery"
+            ]),
+        ]
+
+        for key, keywords in keyword_map:
+            if any(kw in text for kw in keywords):
+                return key
+        return ""
+
+    def _collect_security_headers(self, results: Dict[str, Any]):
+        """Collect security headers from either structured or raw results."""
+        headers_present: Dict[str, str] = {}
+        headers_missing: List[str] = []
+        security_score = ""
+
+        structured = results.get('security_assessment', {}).get('security_headers', {}) or {}
+        if isinstance(structured, dict):
+            for header, data in structured.get('headers_present', {}).items():
+                if header in headers_present:
+                    continue
+                value = data.get("value") if isinstance(data, dict) else data
+                headers_present[header] = str(value) if value is not None else "N/A"
+            for missing in structured.get('headers_missing', []):
+                name = missing.get("name") if isinstance(missing, dict) else missing
+                if name and name not in headers_missing:
+                    headers_missing.append(name)
+            security_score = str(structured.get("security_score") or structured.get("score") or "")
+
+        raw_candidates = []
+        raw_headers = results.get("security_headers", {})
+        if raw_headers:
+            raw_candidates.append(raw_headers)
+        structured_raw = structured.get("raw_headers") if isinstance(structured, dict) else None
+        if structured_raw:
+            raw_candidates.append(structured_raw)
+
+        for raw in raw_candidates:
+            if not isinstance(raw, dict):
+                continue
+            for header, value in raw.items():
+                if header == "security_score":
+                    if not security_score:
+                        security_score = str(value)
+                    continue
+                if value == "Missing":
+                    if header not in headers_missing:
+                        headers_missing.append(header)
+                else:
+                    if header not in headers_present:
+                        headers_present[header] = str(value)
+
+        return headers_present, headers_missing, security_score
+
     def _generate_compliance_metrics(self, results: Dict) -> Dict[str, Any]:
         """Generate OWASP compliance metrics."""
         vulns = results.get('security_assessment', {}).get('vulnerabilities', [])
+        compliance_summary = results.get('compliance_summary') or results.get('security_assessment', {}).get('compliance_summary', {})
+        precomputed_score = None
+        precomputed_issues = None
+        if isinstance(compliance_summary, dict):
+            owasp_summary = compliance_summary.get('OWASP') or compliance_summary.get('owasp')
+            if isinstance(owasp_summary, dict):
+                if 'coverage_percentage' in owasp_summary:
+                    precomputed_score = owasp_summary.get('coverage_percentage')
+                if 'vulnerabilities_covered' in owasp_summary:
+                    precomputed_issues = owasp_summary.get('vulnerabilities_covered')
         
         # Check for OWASP Top 10 coverage
         owasp_coverage = {
@@ -103,22 +256,19 @@ class ProfessionalReportGenerator:
         for vuln in vulns:
             category = vuln.get('category', 'General')
             categories_found.add(category)
-            
-            # Map categories to OWASP categories
-            if category in ['Authorization', 'Authentication']:
-                owasp_coverage['A01_Broken_Access_Control'] += 1
-                owasp_coverage['A07_Identification_Failures'] += 1
-            elif category in ['Cryptography', 'SSL/TLS', 'Data Exposure']:
-                owasp_coverage['A02_Cryptographic_Failures'] += 1
-            elif category in ['SQL Injection', 'Command Injection', 'XSS']:
-                owasp_coverage['A03_Injection'] += 1
-            elif category in ['Configuration', 'Security Headers']:
-                owasp_coverage['A05_Security_Misconfiguration'] += 1
+
+            owasp_key = self._infer_owasp_key(vuln)
+            if owasp_key and owasp_key in owasp_coverage:
+                owasp_coverage[owasp_key] += 1
         
-        total_owasp_issues = sum(owasp_coverage.values())
+        computed_issues = sum(owasp_coverage.values())
+        total_owasp_issues = precomputed_issues if precomputed_issues is not None else computed_issues
         
-        # Calculate compliance score (inverse of OWASP issues)
-        compliance_score = max(0, 100 - (total_owasp_issues * 5))
+        # Calculate compliance score (inverse of OWASP issues) or use precomputed score
+        if precomputed_score is not None:
+            compliance_score = precomputed_score
+        else:
+            compliance_score = max(0, 100 - (total_owasp_issues * 5))
         
         return {
             'score': round(compliance_score, 2),
@@ -780,19 +930,26 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
     
     def _generate_burp_findings(self, results):
         vulnerabilities = results.get('security_assessment', {}).get('vulnerabilities', [])
-        headers = results.get('security_assessment', {}).get('security_headers', {})
+        headers_present, headers_missing, security_score = self._collect_security_headers(results)
         ssl = results.get('security_assessment', {}).get('ssl_tls_analysis', {})
         out = ['<div class="rule"></div>']
         # Security headers (kept concise)
         out.append('<h1 id="headers">Security Headers Analysis</h1>')
         out.append('<div class="finding-section">')
-        out.append('<table class="overview_table">')
-        out.append('<tr><td class="label">Header</td><td class="label">Status</td><td class="label">Value</td></tr>')
-        for header, data in headers.get('headers_present', {}).items():
-            out.append(f'<tr><td>{header}</td><td>Present</td><td>{data.get("value", "N/A")[:120]}</td></tr>')
-        for missing in headers.get('headers_missing', []):
-            out.append(f'<tr><td>{missing.get("name", "Unknown")}</td><td>Missing</td><td>-</td></tr>')
-        out.append('</table></div>')
+        if security_score:
+            out.append(f'<p class="TEXT"><b>Security Headers Score:</b> {self._escape_html(security_score)}</p>')
+        if not headers_present and not headers_missing:
+            out.append('<p class="TEXT">No security header data collected.</p>')
+        else:
+            out.append('<table class="overview_table">')
+            out.append('<tr><td class="label">Header</td><td class="label">Status</td><td class="label">Value</td></tr>')
+            for header in sorted(headers_present.keys()):
+                value = self._escape_html(str(headers_present[header]))
+                out.append(f'<tr><td>{header}</td><td>Present</td><td>{value[:160]}</td></tr>')
+            for header in sorted(headers_missing):
+                out.append(f'<tr><td>{header}</td><td>Missing</td><td>-</td></tr>')
+            out.append('</table>')
+        out.append('</div>')
         # SSL/TLS
         out.append('<div class="rule"></div>')
         out.append('<h1 id="ssl">SSL/TLS Configuration</h1>')
