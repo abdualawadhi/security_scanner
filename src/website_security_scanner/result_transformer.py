@@ -108,6 +108,16 @@ def transform_results_for_professional_report(raw_results):
     if platform == "generic":
         specific_findings = specific_findings or raw_results.get("generic_analysis") or raw_results.get("generic_findings")
 
+    # Include tech stack detection results
+    tech_stack = raw_results.get("tech_stack", {})
+    if not tech_stack:
+        tech_stack = {
+            'server': {'detected': [], 'evidence': {}},
+            'backend': {'detected': [], 'evidence': {}},
+            'frontend': {'detected': [], 'evidence': {}},
+            'all': {'detected': [], 'evidence': {}},
+        }
+
     # Calculate scores using standardizer
     overall_score = calculate_overall_score(vulnerabilities)
     risk_level = calculate_risk_level(overall_score)
@@ -131,7 +141,7 @@ def transform_results_for_professional_report(raw_results):
         },
         "platform_analysis": {
             "platform_type": platform,
-            "technology_stack": [],  # This might need more logic to populate
+            "technology_stack": tech_stack,
             "specific_findings": specific_findings or {},
             "platform_detection": raw_results.get("platform_detection", {}),
         },

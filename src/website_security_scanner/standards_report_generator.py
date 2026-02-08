@@ -776,13 +776,15 @@ body {
     text-transform: uppercase;
     letter-spacing: 1px;
 }
-.executive-summary, .risk-dashboard, .compliance-dashboard, 
-.vulnerability-findings, .http-traffic-section, .methodology-section {
+.executive-summary, .risk-dashboard, .compliance-dashboard,
+.vulnerability-findings, .http-traffic-section, .methodology-section,
+.tech-stack-section, .comparative-analysis-section {
     padding: 40px;
     border-bottom: 1px solid #eee;
 }
 .executive-summary h2, .risk-dashboard h2, .compliance-dashboard h2,
-.vulnerability-findings h2, .http-traffic-section h2, .methodology-section h2 {
+.vulnerability-findings h2, .http-traffic-section h2, .methodology-section h2,
+.tech-stack-section h2, .comparative-analysis-section h2 {
     font-size: 1.8em;
     margin-bottom: 30px;
     color: #2c3e50;
@@ -940,13 +942,13 @@ body {
     font-size: 0.9em;
 }
 .vuln-description, .vuln-background, .vuln-impact,
-.evidence-section, .recommendations-section, 
-.references-section, .verification-section {
+.evidence-section, .recommendations-section,
+.references-section, .verification-section, .remediation-section {
     margin-bottom: 25px;
 }
 .vuln-description h4, .vuln-background h4, .vuln-impact h4,
 .evidence-section h4, .recommendations-section h4,
-.references-section h4, .verification-section h4 {
+.references-section h4, .verification-section h4, .remediation-section h4 {
     font-size: 1.1em;
     margin-bottom: 10px;
     color: #495057;
@@ -1087,6 +1089,121 @@ body {
     background: #f8f9fa;
     border-radius: 8px;
     color: #6c757d;
+}
+html {
+    scroll-behavior: smooth;
+}
+.executive-summary, .risk-dashboard, .compliance-dashboard,
+.vulnerability-findings, .http-traffic-section, .methodology-section,
+.tech-stack-section, .comparative-analysis-section {
+    padding: 40px;
+    border-bottom: 1px solid #eee;
+}
+.vuln-header {
+    cursor: pointer;
+}
+.remediation-section {
+    margin-bottom: 25px;
+}
+.remediation-section h4 {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 5px;
+}
+.remediation-steps {
+    list-style-type: none;
+    padding-left: 0;
+}
+.remediation-steps li {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: white;
+    border-left: 4px solid #28a745;
+    border-radius: 4px;
+}
+.interesting-header {
+    color: #00ff00;
+    font-weight: bold;
+}
+.tech-stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+.tech-stack-category {
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+.tech-stack-category h4 {
+    color: #495057;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #dee2e6;
+}
+.tech-item {
+    display: inline-block;
+    padding: 6px 12px;
+    margin: 4px;
+    background: #e9ecef;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+.tech-item.server { background: #d1ecf1; color: #0c5460; }
+.tech-item.backend { background: #d4edda; color: #155724; }
+.tech-item.frontend { background: #fff3cd; color: #856404; }
+.comparative-analysis {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+}
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+.comparison-table th,
+.comparison-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+.comparison-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+.comparison-table tr:hover {
+    background: #f8f9fa;
+}
+.executive-summary-text {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+    line-height: 1.7;
+}
+.collapse-button {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    font-size: 0.9em;
+    padding: 5px 10px;
+    margin-left: 10px;
+}
+.collapse-button:hover {
+    text-decoration: underline;
+}
+.executive-summary h2, .risk-dashboard h2, .compliance-dashboard h2,
+.vulnerability-findings h2, .http-traffic-section h2, .methodology-section h2,
+.tech-stack-section h2, .comparative-analysis-section h2 {
+    font-size: 1.8em;
+    margin-bottom: 30px;
+    color: #2c3e50;
 }
 @media (max-width: 768px) {
     .dashboard-grid {

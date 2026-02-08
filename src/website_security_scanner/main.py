@@ -46,6 +46,7 @@ from .result_transformer import transform_results_for_professional_report
 from .utils.platform_detector import AdvancedPlatformDetector
 from .utils.evidence_verifier import verify_vulnerabilities
 from .utils.rate_limiter import RateLimiter, ThrottledSession
+from .utils.tech_stack_detector import TechStackDetector
 from .models.vulnerability import EnhancedVulnerability, ScanResult
 from .plugins.plugin_manager import PluginManager
 from .utils.parallel_scanner import ParallelScanner, create_parallel_scan
@@ -89,6 +90,7 @@ class LowCodeSecurityScanner:
         
         self.results = {}
         self.platform_detector = AdvancedPlatformDetector(self.session)
+        self.tech_stack_detector = TechStackDetector(self.session)
         self._last_platform_detection = {}
         
         # Advanced features
@@ -173,6 +175,24 @@ class LowCodeSecurityScanner:
 
             # SSL/TLS analysis
             target_results["ssl_analysis"] = self.analyze_ssl(url)
+
+            # Technology stack detection
+            try:
+                target_results["tech_stack"] = self.tech_stack_detector.detect_tech_stack(
+                    url, response
+                )
+            except Exception as e:
+                target_results["tech_stack"] = {
+                    'server': {'detected': [], 'evidence': {}},
+                    'backend': {'detected': [], 'evidence': {}},
+                    'frontend': {'detected': [], 'evidence': {}},
+                    'all': {'detected': [], 'evidence': {}},
+                    'error': str(e),
+                }
+                target_results["scan_warnings"].append({
+                    "message": "Tech stack detection failed",
+                    "error": str(e),
+                })
 
             if not self._is_scannable_response(response):
                 target_results["scan_warnings"].append({
@@ -349,16 +369,36 @@ class LowCodeSecurityScanner:
             plugin_results = self.plugin_manager.execute_all_plugins(url, basic_results)
         
         # Create enhanced scan result
+        # Extract platform-specific findings
+        platform_specific_findings = {}
+        platform_type = basic_results.get('platform_type', 'Unknown')
+        if platform_type == 'bubble':
+            platform_specific_findings = basic_results.get('bubble_specific', {})
+        elif platform_type == 'outsystems':
+            platform_specific_findings = basic_results.get('outsystems_specific', {})
+        elif platform_type == 'airtable':
+            platform_specific_findings = basic_results.get('airtable_specific', {})
+        elif platform_type == 'shopify':
+            platform_specific_findings = basic_results.get('shopify_specific', {})
+        elif platform_type == 'webflow':
+            platform_specific_findings = basic_results.get('webflow_specific', {})
+        elif platform_type == 'wix':
+            platform_specific_findings = basic_results.get('wix_specific', {})
+        elif platform_type == 'mendix':
+            platform_specific_findings = basic_results.get('mendix_specific', {})
+        elif platform_type == 'generic':
+            platform_specific_findings = basic_results.get('generic_specific', {})
+
         scan_result = ScanResult(
             scan_id=f"enhanced_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             url=url,
-            platform=basic_results.get('platform_type', 'Unknown'),
+            platform=platform_type,
             timestamp=datetime.now().isoformat(),
             vulnerability_findings=enhanced_vulnerabilities,
             security_assessment={
                 'risk_score': self._calculate_risk_score(enhanced_vulnerabilities),
                 'severity_counts': self._get_severity_counts(enhanced_vulnerabilities),
-                'platform_risks': self._assess_platform_risks(basic_results.get('platform_type', 'Unknown')),
+                'platform_risks': self._assess_platform_risks(platform_type),
                 'security_headers': basic_results.get('security_headers', {}),
                 'ssl_tls_analysis': basic_results.get('ssl_analysis', {}),
                 'request_headers': basic_results.get('request_headers', {}),
@@ -380,7 +420,8 @@ class LowCodeSecurityScanner:
                 'scan_duration': 0,  # Would be calculated in real implementation
                 'vulnerability_count': len(enhanced_vulnerabilities),
                 'plugin_results_count': len(plugin_results) if plugin_results else 0
-            }
+            },
+            platform_specific_findings=platform_specific_findings
         )
         
         print(f"[+] Enhanced scan completed. Found {len(enhanced_vulnerabilities)} vulnerabilities")
