@@ -30,7 +30,7 @@ from colorama import Back, Fore, Style, init
 init()
 
 from website_security_scanner.main import LowCodeSecurityScanner
-from website_security_scanner.report_generator import ProfessionalReportGenerator
+from website_security_scanner.standards_report_generator import StandardsBasedReportGenerator
 from website_security_scanner.result_transformer import transform_results_for_professional_report
 from website_security_scanner.result_standardizer import (
     normalize_severity, 
@@ -44,7 +44,7 @@ from website_security_scanner.result_standardizer import (
 class SecurityScannerCLI:
     def __init__(self, scanner=None):
         self.scanner = scanner or LowCodeSecurityScanner()
-        self.report_generator = ProfessionalReportGenerator()
+        self.report_generator = StandardsBasedReportGenerator()
         self.results = []
 
     def print_banner(self):

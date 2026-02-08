@@ -36,7 +36,7 @@ def _safe_duration(start_timestamp: Any) -> str:
 def transform_results_for_professional_report(raw_results):
     """
     Transforms the raw scan data from the scanner into a format suitable for the
-    ProfessionalReportGenerator.
+    StandardsBasedReportGenerator.
     
     Args:
         raw_results (dict): The raw results from the LowCodeSecurityScanner.
