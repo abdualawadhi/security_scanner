@@ -54,12 +54,19 @@ class AdvancedPlatformDetector:
                     r'OutSystemsNow',
                     r'RichWidgets',
                     r'Screen\.aspx',
-                    r'wicket.*outsystems'
+                    r'wicket.*outsystems',
+                    r'_osjs',
+                    r'osVisitor',
+                    r'osVisit',
+                    r'id=[\'"]OutSystemsUI_',
+                    r'OutSystems\.Web\.JavaScript'
                 ],
                 'script_patterns': [
                     r'outsystems.*\.js',
                     r'RichWidgets.*\.js',
-                    r'Screen\.aspx.*\.js'
+                    r'Screen\.aspx.*\.js',
+                    r'_osjs.*\.js',
+                    r'OutSystemsUI.*\.js'
                 ],
                 'meta_patterns': [
                     r'generator.*outsystems',
@@ -191,8 +198,8 @@ class AdvancedPlatformDetector:
             },
             "outsystems": {
                 "headers": ["x-outsystems-"],
-                "content": [r'outsystemsui', r'outsystemsnow', r'richwidgets'],
-                "scripts": [r'outsystems.*\.js', r'richwidgets.*\.js'],
+                "content": [r'outsystemsui', r'outsystemsnow', r'richwidgets', r'_osjs', r'osVisitor', r'osVisit', r'id=[\'"]OutSystemsUI_'],
+                "scripts": [r'outsystems.*\.js', r'richwidgets.*\.js', r'_osjs.*\.js'],
                 "meta": [r'generator.*outsystems'],
             },
             "airtable.com": {

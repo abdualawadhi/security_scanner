@@ -561,3 +561,519 @@ class CommonWebChecksMixin:
                         parameter=param,
                         url=url,
                     )
+
+    def _check_business_logic_flaws(
+        self,
+        url: str,
+        js_content: str,
+        html_content: str,
+        platform: str = "generic",
+    ):
+        """
+        Check for business logic flaws using heuristic patterns.
+
+        Args:
+            url: Target URL
+            js_content: JavaScript content from the page
+            html_content: HTML content from the page
+            platform: Platform type (bubble, outsystems, generic)
+        """
+        findings = []
+
+        # Pattern 1: Insecure action naming in URLs/parameters
+        insecure_action_patterns = [
+            r'(?:action|api|endpoint)\s*[=:]\s*["\']?(?:delete|remove|destroy|drop|admin|reset|restore)(?:["\'&]|$)',
+            r'(?:parameter|param|arg)\s*[=:]\s*["\']?(?:admin|root|debug|test)(?:["\'&]|$)',
+        ]
+
+        combined_content = f"{url} {js_content} {html_content}"
+        for pattern in insecure_action_patterns:
+            matches = re.findall(pattern, combined_content, re.IGNORECASE)
+            if matches:
+                findings.append({
+                    'type': 'Insecure Action Naming',
+                    'evidence': f"Pattern matched: {pattern}",
+                    'count': len(matches),
+                })
+
+        # Pattern 2: Exposed internal role/permission indicators
+        internal_role_patterns = [
+            r'(?:role|permission|access|level|privilege)\s*[=:]\s*["\']?(?:internal|admin|superuser|root|owner)(?:["\'&]|$)',
+            r'(?:is_|has_)(?:admin|owner|superuser|root)\s*[=:]\s*["\']?true',
+        ]
+
+        for pattern in internal_role_patterns:
+            matches = re.findall(pattern, combined_content, re.IGNORECASE)
+            if matches:
+                findings.append({
+                    'type': 'Exposed Internal Roles',
+                    'evidence': f"Internal role exposure detected: {pattern}",
+                    'count': len(matches),
+                })
+
+        # Pattern 3: Platform-specific business logic patterns
+        if platform.lower() == "bubble":
+            bubble_patterns = [
+                r'(?:workflow|action)\s*[=:]\s*["\']?(?:delete|reset|admin)(?:["\'&]|$)',
+                r'privacy\s*rule\s*(?:name|id)\s*[=:]\s*["\']?(?:public|all)(?:["\'&]|$)',
+            ]
+            for pattern in bubble_patterns:
+                matches = re.findall(pattern, combined_content, re.IGNORECASE)
+                if matches:
+                    findings.append({
+                        'type': 'Bubble Business Logic Flaw',
+                        'evidence': f"Bubble-specific pattern: {pattern}",
+                        'count': len(matches),
+                    })
+
+        elif platform.lower() == "outsystems":
+            outsystems_patterns = [
+                r'(?:screen|action)\s*[=:]\s*["\']?(?:admin|internal|backoffice)(?:["\'&]|$)',
+                r'entity\s*(?:name|id)\s*[=:]\s*["\']?(?:user|admin|role)(?:["\'&]|$)',
+            ]
+            for pattern in outsystems_patterns:
+                matches = re.findall(pattern, combined_content, re.IGNORECASE)
+                if matches:
+                    findings.append({
+                        'type': 'OutSystems Business Logic Flaw',
+                        'evidence': f"OutSystems-specific pattern: {pattern}",
+                        'count': len(matches),
+                    })
+
+        # Report findings
+        for finding in findings:
+            remediation_steps = [
+                "Review action naming conventions and avoid exposing administrative functions in URLs",
+                "Implement proper authorization checks for all actions, especially destructive ones",
+                "Use role-based access control (RBAC) with least privilege principles",
+                "Avoid exposing internal role information in client-side code or URLs",
+                "Implement proper validation for all business-critical operations",
+            ]
+            self.add_enriched_vulnerability(
+                finding['type'],
+                "Medium",
+                f"Potential business logic flaw detected: {finding['type'].lower()}",
+                finding['evidence'],
+                "Review and harden business logic to prevent abuse",
+                confidence="Tentative",
+                category="Business Logic",
+                owasp="A01:2021 - Broken Access Control",
+                cwe=["CWE-840"],
+                remediation_steps=remediation_steps,
+                background="Business logic flaws allow attackers to bypass intended application controls and perform unauthorized actions. These vulnerabilities are often application-specific and require deep understanding of the business domain.",
+                impact="Attackers may perform unauthorized administrative actions, access internal resources, or manipulate business processes. This can lead to data breaches, account takeovers, or complete system compromise.",
+            )
+
+    def _improve_session_detection(self, url: str, is_low_code_platform: bool = False):
+        """
+        Improved session-in-URL detection with better false positive filtering.
+
+        Args:
+            url: Target URL to check
+            is_low_code_platform: Whether this is a low-code platform (Bubble, OutSystems, etc.)
+        """
+        session_params = [
+            "session",
+            "token",
+            "sid",
+            "sessionid",
+            "session_id",
+            "session_code",
+            "auth_token",
+            "access_token",
+            "refresh_token",
+            "id_token",
+            "oauth_token",
+            "csrf_token",
+            "state",
+            "nonce",
+        ]
+
+        parsed = urlparse(url)
+        query_params = parse_qs(parsed.query)
+
+        detected_sessions = []
+        for param in session_params:
+            if param in query_params:
+                values = query_params[param]
+                for value in values:
+                    # Improved false positive filtering
+                    # Skip if value is too short (< 16 chars for real sessions)
+                    if len(value) < 16:
+                        # Check if it's clearly a non-sensitive identifier
+                        if re.match(r'^\d+$', value):  # Purely numeric
+                            continue
+                        if value.lower() in ['true', 'false', 'null', 'undefined']:
+                            continue
+
+                    # Skip known non-session patterns
+                    if is_low_code_platform:
+                        # Skip Bubble/OutSystems workflow IDs
+                        if param.lower() in ['workflow', 'wf', 'screen', 'action', 'instance']:
+                            continue
+                        # Skip preview/test sessions
+                        if re.match(r'^(test|preview|demo|sample)', value, re.I):
+                            continue
+
+                    detected_sessions.append({
+                        'param': param,
+                        'value': value[:50] + '...' if len(value) > 50 else value,  # Truncate for evidence
+                    })
+
+        if detected_sessions:
+            evidence_list = []
+            for session in detected_sessions:
+                evidence = f"Parameter: {session['param']}, Value: {session['value']}"
+                evidence_list.append(evidence)
+
+            remediation_steps = [
+                "Use secure, HttpOnly cookies for session management instead of URL parameters",
+                "Implement SameSite cookie attribute to prevent CSRF",
+                "Encrypt sensitive tokens in cookies",
+                "Use short-lived session tokens with proper expiration",
+                "Log and monitor for unusual session-related parameter usage",
+                "Ensure session tokens are generated using cryptographically secure random values",
+            ]
+
+            self.add_enriched_vulnerability(
+                "Session Token in URL",
+                "High",
+                f"Session-related tokens found in URL parameters: {', '.join([s['param'] for s in detected_sessions])}",
+                evidence_list,
+                "Migrate session management to secure cookies",
+                category="Session Management",
+                owasp="A07:2021 - Identification and Authentication Failures",
+                cwe=["CWE-384", "CWE-598"],
+                remediation_steps=remediation_steps,
+                background="Session tokens transmitted in URLs can be exposed through browser history, referrer headers, server logs, and shoulder surfing. This violates best practices for secure session management.",
+                impact="Session tokens in URLs may lead to session hijacking, unauthorized account access, and credential theft. Attackers can easily capture these tokens through various vectors and impersonate legitimate users.",
+            )
+, value):  # Purely numeric
+                            continue
+                        if value.lower() in ['true', 'false', 'null', 'undefined']:
+                            continue
+
+                    # Skip known non-session patterns
+                    if is_low_code_platform:
+                        # Skip Bubble/OutSystems workflow IDs
+                        if param.lower() in ['workflow', 'wf', 'screen', 'action', 'instance']:
+                            continue
+                        # Skip preview/test sessions
+                        if re.match(r'^(test|preview|demo|sample)', value, re.I):
+                            continue
+
+                    detected_sessions.append({
+                        'param': param,
+                        'value': value[:50] + '...' if len(value) > 50 else value,  # Truncate for evidence
+                    })
+
+        if detected_sessions:
+            evidence_list = []
+            for session in detected_sessions:
+                evidence = f"Parameter: {session['param']}, Value: {session['value']}"
+                evidence_list.append(evidence)
+
+            remediation_steps = [
+                "Use secure, HttpOnly cookies for session management instead of URL parameters",
+                "Implement SameSite cookie attribute to prevent CSRF",
+                "Encrypt sensitive tokens in cookies",
+                "Use short-lived session tokens with proper expiration",
+                "Log and monitor for unusual session-related parameter usage",
+                "Ensure session tokens are generated using cryptographically secure random values",
+            ]
+
+            self.add_enriched_vulnerability(
+                "Session Token in URL",
+                "High",
+                f"Session-related tokens found in URL parameters: {', '.join([s['param'] for s in detected_sessions])}",
+                evidence_list,
+                "Migrate session management to secure cookies",
+                category="Session Management",
+                owasp="A07:2021 - Identification and Authentication Failures",
+                cwe=["CWE-384", "CWE-598"],
+                remediation_steps=remediation_steps,
+                background="Session tokens transmitted in URLs can be exposed through browser history, referrer headers, server logs, and shoulder surfing. This violates best practices for secure session management.",
+                impact="Session tokens in URLs may lead to session hijacking, unauthorized account access, and credential theft. Attackers can easily capture these tokens through various vectors and impersonate legitimate users.",
+            )
+, value):  # Purely numeric
+                            continue
+                        if value.lower() in ['true', 'false', 'null', 'undefined']:
+                            continue
+
+                    # Skip known non-session patterns
+                    if is_low_code_platform:
+                        # Skip Bubble/OutSystems workflow IDs
+                        if param.lower() in ['workflow', 'wf', 'screen', 'action', 'instance']:
+                            continue
+                        # Skip preview/test sessions
+                        if re.match(r'^(test|preview|demo|sample)', value, re.I):
+                            continue
+
+                    detected_sessions.append({
+                        'param': param,
+                        'value': value[:50] + '...' if len(value) > 50 else value,  # Truncate for evidence
+                    })
+
+        if detected_sessions:
+            evidence_list = []
+            for session in detected_sessions:
+                evidence = f"Parameter: {session['param']}, Value: {session['value']}"
+                evidence_list.append(evidence)
+
+            remediation_steps = [
+                "Use secure, HttpOnly cookies for session management instead of URL parameters",
+                "Implement SameSite cookie attribute to prevent CSRF",
+                "Encrypt sensitive tokens in cookies",
+                "Use short-lived session tokens with proper expiration",
+                "Log and monitor for unusual session-related parameter usage",
+                "Ensure session tokens are generated using cryptographically secure random values",
+            ]
+
+            self.add_enriched_vulnerability(
+                "Session Token in URL",
+                "High",
+                f"Session-related tokens found in URL parameters: {', '.join([s['param'] for s in detected_sessions])}",
+                evidence_list,
+                "Migrate session management to secure cookies",
+                category="Session Management",
+                owasp="A07:2021 - Identification and Authentication Failures",
+                cwe=["CWE-384", "CWE-598"],
+                remediation_steps=remediation_steps,
+                background="Session tokens transmitted in URLs can be exposed through browser history, referrer headers, server logs, and shoulder surfing. This violates best practices for secure session management.",
+                impact="Session tokens in URLs may lead to session hijacking, unauthorized account access, and credential theft. Attackers can easily capture these tokens through various vectors and impersonate legitimate users.",
+            )
+, value):  # Purely numeric
+                            continue
+                        if value.lower() in ['true', 'false', 'null', 'undefined']:
+                            continue
+
+                    # Skip known non-session patterns
+                    if is_low_code_platform:
+                        # Skip Bubble/OutSystems workflow IDs
+                        if param.lower() in ['workflow', 'wf', 'screen', 'action', 'instance']:
+                            continue
+                        # Skip preview/test sessions
+                        if re.match(r'^(test|preview|demo|sample)', value, re.I):
+                            continue
+
+                    detected_sessions.append({
+                        'param': param,
+                        'value': value[:50] + '...' if len(value) > 50 else value,  # Truncate for evidence
+                    })
+
+        if detected_sessions:
+            evidence_list = []
+            for session in detected_sessions:
+                evidence = f"Parameter: {session['param']}, Value: {session['value']}"
+                evidence_list.append(evidence)
+
+            remediation_steps = [
+                "Use secure, HttpOnly cookies for session management instead of URL parameters",
+                "Implement SameSite cookie attribute to prevent CSRF",
+                "Encrypt sensitive tokens in cookies",
+                "Use short-lived session tokens with proper expiration",
+                "Log and monitor for unusual session-related parameter usage",
+                "Ensure session tokens are generated using cryptographically secure random values",
+            ]
+
+            self.add_enriched_vulnerability(
+                "Session Token in URL",
+                "High",
+                f"Session-related tokens found in URL parameters: {', '.join([s['param'] for s in detected_sessions])}",
+                evidence_list,
+                "Migrate session management to secure cookies",
+                category="Session Management",
+                owasp="A07:2021 - Identification and Authentication Failures",
+                cwe=["CWE-384", "CWE-598"],
+                remediation_steps=remediation_steps,
+                background="Session tokens transmitted in URLs can be exposed through browser history, referrer headers, server logs, and shoulder surfing. This violates best practices for secure session management.",
+                impact="Session tokens in URLs may lead to session hijacking, unauthorized account access, and credential theft. Attackers can easily capture these tokens through various vectors and impersonate legitimate users.",
+            )
+, value):  # Purely numeric
+                            continue
+                        if value.lower() in ['true', 'false', 'null', 'undefined']:
+                            continue
+
+                    # Skip known non-session patterns
+                    if is_low_code_platform:
+                        # Skip Bubble/OutSystems workflow IDs
+                        if param.lower() in ['workflow', 'wf', 'screen', 'action', 'instance']:
+                            continue
+                        # Skip preview/test sessions
+                        if re.match(r'^(test|preview|demo|sample)', value, re.I):
+                            continue
+
+                    detected_sessions.append({
+                        'param': param,
+                        'value': value[:50] + '...' if len(value) > 50 else value,  # Truncate for evidence
+                    })
+
+        if detected_sessions:
+            evidence_list = []
+            for session in detected_sessions:
+                evidence = f"Parameter: {session['param']}, Value: {session['value']}"
+                evidence_list.append(evidence)
+
+            remediation_steps = [
+                "Use secure, HttpOnly cookies for session management instead of URL parameters",
+                "Implement SameSite cookie attribute to prevent CSRF",
+                "Encrypt sensitive tokens in cookies",
+                "Use short-lived session tokens with proper expiration",
+                "Log and monitor for unusual session-related parameter usage",
+                "Ensure session tokens are generated using cryptographically secure random values",
+            ]
+
+            self.add_enriched_vulnerability(
+                "Session Token in URL",
+                "High",
+                f"Session-related tokens found in URL parameters: {', '.join([s['param'] for s in detected_sessions])}",
+                evidence_list,
+                "Migrate session management to secure cookies",
+                category="Session Management",
+                owasp="A07:2021 - Identification and Authentication Failures",
+                cwe=["CWE-384", "CWE-598"],
+                remediation_steps=remediation_steps,
+                background="Session tokens transmitted in URLs can be exposed through browser history, referrer headers, server logs, and shoulder surfing. This violates best practices for secure session management.",
+                impact="Session tokens in URLs may lead to session hijacking, unauthorized account access, and credential theft. Attackers can easily capture these tokens through various vectors and impersonate legitimate users.",
+            )
+, value):  # Purely numeric
+                            continue
+                        if value.lower() in ['true', 'false', 'null', 'undefined']:
+                            continue
+
+                    # Skip known non-session patterns
+                    if is_low_code_platform:
+                        # Skip Bubble/OutSystems workflow IDs
+                        if param.lower() in ['workflow', 'wf', 'screen', 'action', 'instance']:
+                            continue
+                        # Skip preview/test sessions
+                        if re.match(r'^(test|preview|demo|sample)', value, re.I):
+                            continue
+
+                    detected_sessions.append({
+                        'param': param,
+                        'value': value[:50] + '...' if len(value) > 50 else value,  # Truncate for evidence
+                    })
+
+        if detected_sessions:
+            evidence_list = []
+            for session in detected_sessions:
+                evidence = f"Parameter: {session['param']}, Value: {session['value']}"
+                evidence_list.append(evidence)
+
+            remediation_steps = [
+                "Use secure, HttpOnly cookies for session management instead of URL parameters",
+                "Implement SameSite cookie attribute to prevent CSRF",
+                "Encrypt sensitive tokens in cookies",
+                "Use short-lived session tokens with proper expiration",
+                "Log and monitor for unusual session-related parameter usage",
+                "Ensure session tokens are generated using cryptographically secure random values",
+            ]
+
+            self.add_enriched_vulnerability(
+                "Session Token in URL",
+                "High",
+                f"Session-related tokens found in URL parameters: {', '.join([s['param'] for s in detected_sessions])}",
+                evidence_list,
+                "Migrate session management to secure cookies",
+                category="Session Management",
+                owasp="A07:2021 - Identification and Authentication Failures",
+                cwe=["CWE-384", "CWE-598"],
+                remediation_steps=remediation_steps,
+                background="Session tokens transmitted in URLs can be exposed through browser history, referrer headers, server logs, and shoulder surfing. This violates best practices for secure session management.",
+                impact="Session tokens in URLs may lead to session hijacking, unauthorized account access, and credential theft. Attackers can easily capture these tokens through various vectors and impersonate legitimate users.",
+            )
+, value):  # Purely numeric
+                            continue
+                        if value.lower() in ['true', 'false', 'null', 'undefined']:
+                            continue
+
+                    # Skip known non-session patterns
+                    if is_low_code_platform:
+                        # Skip Bubble/OutSystems workflow IDs
+                        if param.lower() in ['workflow', 'wf', 'screen', 'action', 'instance']:
+                            continue
+                        # Skip preview/test sessions
+                        if re.match(r'^(test|preview|demo|sample)', value, re.I):
+                            continue
+
+                    detected_sessions.append({
+                        'param': param,
+                        'value': value[:50] + '...' if len(value) > 50 else value,  # Truncate for evidence
+                    })
+
+        if detected_sessions:
+            evidence_list = []
+            for session in detected_sessions:
+                evidence = f"Parameter: {session['param']}, Value: {session['value']}"
+                evidence_list.append(evidence)
+
+            remediation_steps = [
+                "Use secure, HttpOnly cookies for session management instead of URL parameters",
+                "Implement SameSite cookie attribute to prevent CSRF",
+                "Encrypt sensitive tokens in cookies",
+                "Use short-lived session tokens with proper expiration",
+                "Log and monitor for unusual session-related parameter usage",
+                "Ensure session tokens are generated using cryptographically secure random values",
+            ]
+
+            self.add_enriched_vulnerability(
+                "Session Token in URL",
+                "High",
+                f"Session-related tokens found in URL parameters: {', '.join([s['param'] for s in detected_sessions])}",
+                evidence_list,
+                "Migrate session management to secure cookies",
+                category="Session Management",
+                owasp="A07:2021 - Identification and Authentication Failures",
+                cwe=["CWE-384", "CWE-598"],
+                remediation_steps=remediation_steps,
+                background="Session tokens transmitted in URLs can be exposed through browser history, referrer headers, server logs, and shoulder surfing. This violates best practices for secure session management.",
+                impact="Session tokens in URLs may lead to session hijacking, unauthorized account access, and credential theft. Attackers can easily capture these tokens through various vectors and impersonate legitimate users.",
+            )
+, value):  # Purely numeric
+                            continue
+                        if value.lower() in ['true', 'false', 'null', 'undefined']:
+                            continue
+
+                    # Skip known non-session patterns
+                    if is_low_code_platform:
+                        # Skip Bubble/OutSystems workflow IDs
+                        if param.lower() in ['workflow', 'wf', 'screen', 'action', 'instance']:
+                            continue
+                        # Skip preview/test sessions
+                        if re.match(r'^(test|preview|demo|sample)', value, re.I):
+                            continue
+
+                    detected_sessions.append({
+                        'param': param,
+                        'value': value[:50] + '...' if len(value) > 50 else value,  # Truncate for evidence
+                    })
+
+        if detected_sessions:
+            evidence_list = []
+            for session in detected_sessions:
+                evidence = f"Parameter: {session['param']}, Value: {session['value']}"
+                evidence_list.append(evidence)
+
+            remediation_steps = [
+                "Use secure, HttpOnly cookies for session management instead of URL parameters",
+                "Implement SameSite cookie attribute to prevent CSRF",
+                "Encrypt sensitive tokens in cookies",
+                "Use short-lived session tokens with proper expiration",
+                "Log and monitor for unusual session-related parameter usage",
+                "Ensure session tokens are generated using cryptographically secure random values",
+            ]
+
+            self.add_enriched_vulnerability(
+                "Session Token in URL",
+                "High",
+                f"Session-related tokens found in URL parameters: {', '.join([s['param'] for s in detected_sessions])}",
+                evidence_list,
+                "Migrate session management to secure cookies",
+                category="Session Management",
+                owasp="A07:2021 - Identification and Authentication Failures",
+                cwe=["CWE-384", "CWE-598"],
+                remediation_steps=remediation_steps,
+                background="Session tokens transmitted in URLs can be exposed through browser history, referrer headers, server logs, and shoulder surfing. This violates best practices for secure session management.",
+                impact="Session tokens in URLs may lead to session hijacking, unauthorized account access, and credential theft. Attackers can easily capture these tokens through various vectors and impersonate legitimate users.",
+            )
