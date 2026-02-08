@@ -32,6 +32,13 @@ init()
 from website_security_scanner.main import LowCodeSecurityScanner
 from website_security_scanner.report_generator import ProfessionalReportGenerator
 from website_security_scanner.result_transformer import transform_results_for_professional_report
+from website_security_scanner.result_standardizer import (
+    normalize_severity, 
+    calculate_overall_score, 
+    calculate_risk_level, 
+    normalize_scan_results,
+    SEVERITY_ORDER
+)
 
 
 class SecurityScannerCLI:
@@ -126,6 +133,9 @@ class SecurityScannerCLI:
         """Print a summary of scan results"""
         url = result.get("url", "Unknown")
         platform = result.get("platform_type", "unknown").title()
+        
+        # Normalize results before printing summary
+        result = normalize_scan_results(result)
         vulnerabilities = result.get("vulnerabilities", [])
 
         print(f"\n{Fore.CYAN}═══ Scan Summary for {url} ═══{Style.RESET_ALL}")
@@ -137,18 +147,10 @@ class SecurityScannerCLI:
             return
 
         # Vulnerability summary
-        severity_counts = {
-            "Critical": 0,
-            "High": 0,
-            "Medium": 0,
-            "Low": 0,
-            "Information": 0,
-        }
+        severity_counts = {sev: 0 for sev in SEVERITY_ORDER}
         for vuln in vulnerabilities:
-            severity = vuln.get("severity", "Low")
-            if severity not in severity_counts:
-                severity_counts[severity] = 0
-            severity_counts[severity] += 1
+            severity = vuln.get("severity", "Info")
+            severity_counts[severity] = severity_counts.get(severity, 0) + 1
 
         total_vulns = sum(severity_counts.values())
 
@@ -157,7 +159,7 @@ class SecurityScannerCLI:
         else:
             self.print_status(f"Found {total_vulns} vulnerabilities:", "warning")
 
-            for severity in ["Critical", "High", "Medium", "Low", "Information"]:
+            for severity in SEVERITY_ORDER:
                 count = severity_counts.get(severity, 0)
                 if count > 0:
                     color = {
@@ -165,10 +167,18 @@ class SecurityScannerCLI:
                         "High": Fore.RED,
                         "Medium": Fore.YELLOW,
                         "Low": Fore.BLUE,
-                        "Information": Fore.CYAN,
+                        "Info": Fore.CYAN,
                     }.get(severity, Fore.WHITE)
 
                     print(f"  {color}{severity}: {count}{Style.RESET_ALL}")
+
+        # Overall Score and Risk
+        score = result.get("security_score", 0)
+        risk = result.get("risk_level", "None")
+        
+        score_color = Fore.GREEN if score < 20 else Fore.YELLOW if score < 60 else Fore.RED
+        print(f"Overall Risk Score: {score_color}{score}/100{Style.RESET_ALL}")
+        print(f"Risk Level: {score_color}{risk}{Style.RESET_ALL}")
 
         # Security headers
         headers = result.get("security_headers", {})
@@ -442,26 +452,24 @@ class SecurityScannerCLI:
 
     def enhance_scan_results(self, basic_results):
         """Enhance basic scan results with professional structure"""
+        # Normalize basic results first
+        basic_results = normalize_scan_results(basic_results)
+        
         platform = basic_results.get("platform_type", "unknown")
         specific_findings = {}
-        if platform == "bubble":
-            specific_findings = basic_results.get("bubble_specific", {})
-        elif platform == "outsystems":
-            specific_findings = basic_results.get("outsystems_specific", {})
-        elif platform == "airtable":
-            specific_findings = basic_results.get("airtable_specific", {})
-        elif platform == "shopify":
-            specific_findings = basic_results.get("shopify_specific", {})
-        elif platform == "webflow":
-            specific_findings = basic_results.get("webflow_specific", {})
-        elif platform == "wix":
-            specific_findings = basic_results.get("wix_specific", {})
-        elif platform == "mendix":
-            specific_findings = basic_results.get("mendix_specific", {})
+        for p in ["bubble", "outsystems", "airtable", "shopify", "webflow", "wix", "mendix"]:
+            if platform == p:
+                specific_findings = basic_results.get(f"{p}_specific", {})
+                break
 
         # Determine scan status and error info
         scan_failed = "error" in basic_results
         error_info = basic_results.get("error") if scan_failed else None
+        
+        vulns = basic_results.get("vulnerabilities", [])
+        overall_score = basic_results.get("security_score", 0)
+        risk_level = basic_results.get("risk_level", "None")
+
         return {
             "scan_metadata": {
                 "url": basic_results.get("url", ""),
@@ -480,51 +488,22 @@ class SecurityScannerCLI:
                 "specific_findings": specific_findings,
             },
             "security_assessment": {
-                "overall_score": self.calculate_score(basic_results),
-                "risk_level": self.determine_risk(basic_results),
+                "overall_score": overall_score,
+                "risk_level": risk_level,
                 "compliance_status": {"OWASP": "Partial", "NIST": "Partial"},
-                "vulnerabilities": basic_results.get("vulnerabilities", []),
+                "vulnerabilities": vulns,
                 "security_headers": basic_results.get("security_headers", {}),
                 "ssl_tls_analysis": basic_results.get("ssl_analysis", {}),
             },
-            "executive_summary": self.generate_summary(basic_results),
-        }
-
-    def calculate_score(self, results):
-        """Calculate security score. If the scan failed, return 'N/A'."""
-        if "error" in results:
-            return "N/A"
-        score = 100
-        vulns = results.get("vulnerabilities", [])
-        for v in vulns:
-            if v.get("severity") == "Critical": score -= 25
-            elif v.get("severity") == "High": score -= 15
-            elif v.get("severity") == "Medium": score -= 10
-            elif v.get("severity") == "Low": score -= 5
-        return max(0, score)
-
-    def determine_risk(self, results):
-        """Determine risk level. If the scan failed, return 'Unknown'."""
-        if "error" in results:
-            return "Unknown"
-        score = self.calculate_score(results)
-        if isinstance(score, str):
-            return "Unknown"
-        if score >= 80: return "Low"
-        elif score >= 60: return "Medium"
-        elif score >= 40: return "High"
-        else: return "Critical"
-
-    def generate_summary(self, results):
-        """Generate executive summary"""
-        vulns = results.get("vulnerabilities", [])
-        return {
-            "critical_findings": len([v for v in vulns if v.get("severity") == "Critical"]),
-            "high_risk_issues": len([v for v in vulns if v.get("severity") == "High"]),
-            "medium_risk_issues": len([v for v in vulns if v.get("severity") == "Medium"]),
-            "low_risk_issues": len([v for v in vulns if v.get("severity") == "Low"]),
-            "immediate_actions_required": ["Review and remediate identified vulnerabilities"],
-            "strategic_recommendations": ["Implement comprehensive security headers"]
+            "executive_summary": {
+                "critical_findings": sum(1 for v in vulns if v.get("severity") == "Critical"),
+                "high_risk_issues": sum(1 for v in vulns if v.get("severity") == "High"),
+                "medium_risk_issues": sum(1 for v in vulns if v.get("severity") == "Medium"),
+                "low_risk_issues": sum(1 for v in vulns if v.get("severity") == "Low"),
+                "info_findings": sum(1 for v in vulns if v.get("severity") == "Info"),
+                "immediate_actions_required": ["Review and remediate identified vulnerabilities"],
+                "strategic_recommendations": ["Implement comprehensive security headers"]
+            },
         }
 
     def generate_enhanced_report(self, results, output_file):

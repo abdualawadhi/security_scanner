@@ -21,7 +21,7 @@ from ..exceptions import AnalysisError
 from ..utils.logger import get_logger
 from ..verifier import VulnerabilityVerifier
 from ..config.constants import SEVERITY_LEVELS, CONFIDENCE_LEVELS
-
+from ..result_standardizer import normalize_severity
 
 class BaseAnalyzer:
     """
@@ -87,11 +87,8 @@ class BaseAnalyzer:
         return "text/html" in content_type or "application/xhtml+xml" in content_type
 
     def _normalize_severity(self, severity: str) -> str:
-        """Normalize severity to a supported label."""
-        if not severity:
-            return "Info"
-        sev_map = {k.lower(): k for k in SEVERITY_LEVELS.keys()}
-        return sev_map.get(str(severity).lower(), "Info")
+        """Normalize severity using centralized standardizer."""
+        return normalize_severity(severity)
 
     def _normalize_confidence(self, confidence: str) -> str:
         """Normalize confidence to a supported label."""

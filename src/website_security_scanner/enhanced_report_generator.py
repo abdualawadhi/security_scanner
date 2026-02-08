@@ -30,63 +30,6 @@ class EnhancedReportGenerator(ProfessionalReportGenerator):
             return self._generate_enhanced_html(scan_results)
         return self._generate_html(scan_results)
 
-    def _calculate_risk_score(self, vulnerabilities: List[Dict]) -> Dict[str, Any]:
-        """Calculate overall risk score based on severity distribution."""
-        severity_weights = {
-            'critical': 10.0,
-            'high': 7.5,
-            'medium': 5.0,
-            'low': 2.5,
-            'info': 1.0
-        }
-        
-        confidence_multipliers = {
-            'certain': 1.0,
-            'firm': 0.8,
-            'tentative': 0.5
-        }
-        
-        total_score = 0.0
-        max_possible_score = 0.0
-        
-        severity_counts = {sev: 0 for sev in severity_weights.keys()}
-        
-        for vuln in vulnerabilities:
-            severity = vuln.get('severity', 'info').lower()
-            confidence = vuln.get('confidence', 'tentative').lower()
-            
-            if severity in severity_weights and confidence in confidence_multipliers:
-                weight = severity_weights[severity]
-                multiplier = confidence_multipliers[confidence]
-                score = weight * multiplier
-                
-                total_score += score
-                severity_counts[severity] += 1
-                max_possible_score += weight * 1.0
-        
-        # Normalize to 0-100 scale using count-weighted maximum
-        normalized_score = 0.0
-        if max_possible_score > 0:
-            normalized_score = min(100.0, (total_score / max_possible_score) * 100)
-        
-        # Determine risk level
-        if normalized_score >= 80:
-            risk_level = 'Critical'
-        elif normalized_score >= 60:
-            risk_level = 'High'
-        elif normalized_score >= 40:
-            risk_level = 'Medium'
-        elif normalized_score >= 20:
-            risk_level = 'Low'
-        else:
-            risk_level = 'Minimal'
-        
-        return {
-            'score': round(normalized_score, 2),
-            'level': risk_level,
-            'severity_counts': severity_counts,
-            'total_vulnerabilities': len(vulnerabilities)
-        }
 
     def _generate_compliance_metrics(self, results: Dict) -> Dict[str, Any]:
         """Generate OWASP compliance metrics."""
@@ -577,7 +520,7 @@ h3 { font-size: 1.1em; color: #404042; margin: 15px 0 10px 0; }
             return '<div class="enhanced-section"><p>No vulnerabilities requiring remediation found.</p></div>'
         rows = []
         for item in remediation[:10]:
-            cwe_links = ', '.join([f"<a href='https://cwe.mitre.org/data/definitions/{c}.html' target='_blank'>CWE-{c}</a>" for c in item['cwe'][:3]])
+            cwe_links = ', '.join([f"<a href='https://cwe.mitre.org/data/definitions/{c.replace('CWE-', '') if c.startswith('CWE-') else c}.html' target='_blank'>{c}</a>" for c in item['cwe'][:3]])
             rows.append(f"""
         <tr>
             <td><span class="priority-number">{item['priority']}</span></td>

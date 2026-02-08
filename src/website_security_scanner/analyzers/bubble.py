@@ -659,6 +659,7 @@ class BubbleAnalyzer(CommonWebChecksMixin, AdvancedChecksMixin, VerificationMeta
                     cwe=["CWE-614"]
                 )
 
+            
     def _check_stripe_public_keys(self, js_content: str, url: str):
         """Detect Stripe publishable keys in client-side code."""
         pattern = r"\bpk_(live|test)_[A-Za-z0-9]{16,}\b"

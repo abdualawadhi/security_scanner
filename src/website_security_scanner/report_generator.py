@@ -7,6 +7,12 @@ import base64
 import re
 from datetime import datetime
 from typing import Dict, List, Any
+from .result_standardizer import (
+    normalize_severity, 
+    calculate_overall_score, 
+    calculate_risk_level,
+    SEVERITY_ORDER
+)
 
 class ProfessionalReportGenerator:
     def generate_report(self, scan_results, output_path=None, enhanced=True):
@@ -25,59 +31,21 @@ class ProfessionalReportGenerator:
         return self._generate_html(scan_results)
 
     def _calculate_risk_score(self, vulnerabilities: List[Dict]) -> Dict[str, Any]:
-        """Calculate overall risk score based on severity distribution."""
-        severity_weights = {
-            'critical': 10.0,
-            'high': 7.5,
-            'medium': 5.0,
-            'low': 2.5,
-            'info': 1.0
-        }
+        """Calculate overall risk score using the centralized standardizer."""
+        score = calculate_overall_score(vulnerabilities)
+        level = calculate_risk_level(score)
         
-        confidence_multipliers = {
-            'certain': 1.0,
-            'firm': 0.8,
-            'tentative': 0.5
-        }
-        
-        total_score = 0.0
-        max_possible_score = 0.0
-        
-        severity_counts = {sev: 0 for sev in severity_weights.keys()}
-        
+        severity_counts = {sev.lower(): 0 for sev in SEVERITY_ORDER}
         for vuln in vulnerabilities:
-            severity = vuln.get('severity', 'info').lower()
-            confidence = vuln.get('confidence', 'tentative').lower()
-            
-            if severity in severity_weights and confidence in confidence_multipliers:
-                weight = severity_weights[severity]
-                multiplier = confidence_multipliers[confidence]
-                score = weight * multiplier
+            sev = str(vuln.get('severity', 'info')).lower()
+            if sev in severity_counts:
+                severity_counts[sev] += 1
+            else:
+                severity_counts['info'] += 1
                 
-                total_score += score
-                severity_counts[severity] += 1
-                max_possible_score += weight * 1.0
-        
-        # Normalize to 0-100 scale using count-weighted maximum
-        normalized_score = 0.0
-        if max_possible_score > 0:
-            normalized_score = min(100.0, (total_score / max_possible_score) * 100)
-        
-        # Determine risk level
-        if normalized_score >= 80:
-            risk_level = 'Critical'
-        elif normalized_score >= 60:
-            risk_level = 'High'
-        elif normalized_score >= 40:
-            risk_level = 'Medium'
-        elif normalized_score >= 20:
-            risk_level = 'Low'
-        else:
-            risk_level = 'Minimal'
-        
         return {
-            'score': round(normalized_score, 2),
-            'level': risk_level,
+            'score': score,
+            'level': level,
             'severity_counts': severity_counts,
             'total_vulnerabilities': len(vulnerabilities)
         }
@@ -1089,7 +1057,8 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
             capecs = v.get('capec', [])
             refs = []
             for c in cwes:
-                refs.append(f"<a href=\"https://cwe.mitre.org/data/definitions/{c}.html\">CWE-{c}</a>")
+                cwe_num = c.replace('CWE-', '') if c.startswith('CWE-') else c
+                refs.append(f"<a href=\"https://cwe.mitre.org/data/definitions/{cwe_num}.html\">{c}</a>")
             for c in capecs:
                 refs.append(f"<a href=\"https://capec.mitre.org/data/definitions/{c}.html\">CAPEC-{c}</a>")
             if refs:
@@ -1099,7 +1068,7 @@ div.scan_issue_info_tentative_rpt{width: 32px; height: 32px; background-image: u
                 rid = f"{i}.{j}"
                 url = inst.get('url','')
                 # Make URL clickable in section header
-                out.append(f"<br><span class=\"BODH1\" id=\"{rid}\">{rid}.&nbsp;<a href=\"{url}\" target=\"_blank\" style=\"color: white; text-decoration: underline;\">{url}</a></span>")
+                out.append(f"<br><span class=\"BODH1\" id=\"{rid}\">{rid}.&nbsp;<a href=\"{url}\" target=\"_blank\" style=\"color: #3b82f6; text-decoration: underline;\">{url}</a></span>")
                 req = inst.get('request')
                 if req:
                     out.append('<h2>Request</h2>')

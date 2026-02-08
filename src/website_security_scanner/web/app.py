@@ -27,6 +27,7 @@ from bs4 import BeautifulSoup
 from website_security_scanner.main import LowCodeSecurityScanner
 from website_security_scanner.enhanced_report_generator import EnhancedReportGenerator
 from website_security_scanner.result_transformer import transform_results_for_professional_report
+from website_security_scanner.result_standardizer import normalize_scan_results
 
 # Global configuration - store runtime data under working directory by default
 DATA_ROOT = Path(os.environ.get("WSS_DATA_DIR", str(Path.cwd() / "data"))).resolve()
@@ -496,16 +497,23 @@ def execute_scan(app, socketio, scan_id):
             'message': 'Analyzing vulnerabilities...'
         })
         
-        # Save results
+        # Save results after normalization
+        results = normalize_scan_results(results)
         result_file = Path(app.config['SCANS_FOLDER']) / f"{scan_id}.json"
         with open(result_file, 'w') as f:
             json.dump(results, f, indent=2)
         
         # Count vulnerabilities by severity
         vulns = results.get('vulnerabilities', [])
-        severity_counts = {}
+        severity_counts = {
+            'critical_count': 0,
+            'high_count': 0,
+            'medium_count': 0,
+            'low_count': 0,
+            'info_count': 0
+        }
         for vuln in vulns:
-            sev = vuln.get('severity', 'info').lower()
+            sev = vuln.get('severity', 'Info').lower()
             severity_counts[f'{sev}_count'] = severity_counts.get(f'{sev}_count', 0) + 1
         
         # Update scan job
@@ -513,6 +521,8 @@ def execute_scan(app, socketio, scan_id):
         scan_job['completed_at'] = datetime.now().isoformat()
         scan_job['progress'] = 100
         scan_job['vulnerability_count'] = len(vulns)
+        scan_job['security_score'] = results.get('security_score', 0)
+        scan_job['risk_level'] = results.get('risk_level', 'None')
         scan_job.update(severity_counts)
         scan_job['platform'] = results.get('platform_type', 'unknown')
         

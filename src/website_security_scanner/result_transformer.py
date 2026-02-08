@@ -7,6 +7,12 @@ from typing import Any, List
 from urllib.parse import urlparse
 
 from .utils.confidence_scoring import compute_confidence_score
+from .result_standardizer import (
+    normalize_severity, 
+    calculate_overall_score, 
+    calculate_risk_level, 
+    normalize_vulnerability
+)
 
 
 def _normalize_evidence(evidence: Any) -> List[Any]:
@@ -17,17 +23,6 @@ def _normalize_evidence(evidence: Any) -> List[Any]:
     return [evidence]
 
 
-def _normalize_severity(severity: Any) -> str:
-    if not severity:
-        return "Info"
-    sev = str(severity).lower()
-    if sev in {"critical", "high", "medium", "low"}:
-        return sev.title()
-    if sev in {"info", "information"}:
-        return "Info"
-    return "Info"
-
-
 def _safe_duration(start_timestamp: Any) -> str:
     if not start_timestamp:
         return "N/A"
@@ -36,52 +31,6 @@ def _safe_duration(start_timestamp: Any) -> str:
         return str(datetime.now() - start_dt)
     except Exception:
         return "N/A"
-
-
-def calculate_risk_level(vulnerabilities):
-    """Calculate risk level using weighted severity and confidence."""
-    if not vulnerabilities:
-        return "Low"
-
-    severity_weights = {
-        'critical': 10.0,
-        'high': 7.5,
-        'medium': 5.0,
-        'low': 2.5,
-        'info': 1.0
-    }
-
-    confidence_multipliers = {
-        'certain': 1.0,
-        'firm': 0.8,
-        'tentative': 0.5
-    }
-
-    total_score = 0.0
-    max_possible_score = 0.0
-
-    for vuln in vulnerabilities:
-        severity = vuln.get('severity', 'info').lower()
-        confidence = vuln.get('confidence', 'tentative').lower()
-        if severity in severity_weights and confidence in confidence_multipliers:
-            weight = severity_weights[severity]
-            total_score += weight * confidence_multipliers[confidence]
-            max_possible_score += weight * 1.0
-
-    normalized_score = 0.0
-    if max_possible_score > 0:
-        normalized_score = min(100.0, (total_score / max_possible_score) * 100)
-
-    if normalized_score >= 80:
-        return "Critical"
-    elif normalized_score >= 60:
-        return "High"
-    elif normalized_score >= 40:
-        return "Medium"
-    elif normalized_score >= 20:
-        return "Low"
-    else:
-        return "Minimal"
 
 
 def transform_results_for_professional_report(raw_results):
@@ -102,6 +51,7 @@ def transform_results_for_professional_report(raw_results):
     parsed = urlparse(base_url) if base_url else None
 
     for vuln in raw_results.get('vulnerabilities', []):
+        vuln = normalize_vulnerability(vuln)
         evidence_list = _normalize_evidence(vuln.get("evidence"))
         # Prefer analyzer-provided instances; otherwise build a single instance
         instances = vuln.get("instances")
@@ -115,8 +65,8 @@ def transform_results_for_professional_report(raw_results):
 
         vulnerabilities.append({
             "title": vuln.get("type", "Unnamed Vulnerability"),
-            "severity": _normalize_severity(vuln.get("severity", "info")),
-            "confidence": vuln.get("confidence", "tentative"),
+            "severity": vuln.get("severity"),
+            "confidence": vuln.get("confidence"),
             "description": vuln.get("description", "No details available."),
             "category": vuln.get("category", "General"),
             "owasp": vuln.get("owasp", vuln.get("owasp_category", "N/A")),
@@ -158,6 +108,10 @@ def transform_results_for_professional_report(raw_results):
     if platform == "generic":
         specific_findings = specific_findings or raw_results.get("generic_analysis") or raw_results.get("generic_findings")
 
+    # Calculate scores using standardizer
+    overall_score = calculate_overall_score(vulnerabilities)
+    risk_level = calculate_risk_level(overall_score)
+
     structured_data = {
         "scan_metadata": {
             "url": raw_results.get("url"),
@@ -183,9 +137,11 @@ def transform_results_for_professional_report(raw_results):
         },
         "executive_summary": {
             "total_vulnerabilities": len(vulnerabilities),
-            "high": sum(1 for v in vulnerabilities if v['severity'].lower() == 'high'),
-            "medium": sum(1 for v in vulnerabilities if v['severity'].lower() == 'medium'),
-            "low": sum(1 for v in vulnerabilities if v['severity'].lower() == 'low'),
+            "critical": sum(1 for v in vulnerabilities if v['severity'] == 'Critical'),
+            "high": sum(1 for v in vulnerabilities if v['severity'] == 'High'),
+            "medium": sum(1 for v in vulnerabilities if v['severity'] == 'Medium'),
+            "low": sum(1 for v in vulnerabilities if v['severity'] == 'Low'),
+            "info": sum(1 for v in vulnerabilities if v['severity'] == 'Info'),
         },
         "security_assessment": {
             "vulnerabilities": vulnerabilities,
@@ -197,9 +153,8 @@ def transform_results_for_professional_report(raw_results):
                 "raw_headers": raw_results.get("security_headers", {}),
             },
             "ssl_tls_analysis": raw_results.get("ssl_analysis", {}),
-            "overall_score": raw_results.get("security_score", 100),
-            "risk_level": calculate_risk_level(vulnerabilities),
-            # Add other assessment areas if needed
+            "overall_score": overall_score,
+            "risk_level": risk_level,
         },
     }
     

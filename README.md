@@ -44,6 +44,11 @@ This tool performs automated security assessments of low-code applications built
 - **Comparative Analysis**: Cross-platform security comparison
 - **Executive Summaries**: High-level security assessment overviews
 - **Verification Results**: Includes active testing outcomes with evidence
+- **Standardized Scoring**: Centralized risk scoring (0-100) and severity normalization across all interfaces
+
+## 📜 Thesis Documentation
+For a deep dive into the technical architecture, methodology, and scoring formulas, please refer to:
+[**THESIS_DOCUMENTATION.md**](THESIS_DOCUMENTATION.md)
 
 ## Installation
 
