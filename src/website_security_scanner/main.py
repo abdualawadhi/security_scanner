@@ -41,7 +41,7 @@ from .analyzers import (
     analyze_platform_security,
 )
 from .analyzers.reports import SecurityReportGenerator
-from .report_generator import ProfessionalReportGenerator
+from .standards_report_generator import StandardsBasedReportGenerator
 from .result_transformer import transform_results_for_professional_report
 from .utils.platform_detector import AdvancedPlatformDetector
 from .utils.evidence_verifier import verify_vulnerabilities
@@ -1112,10 +1112,10 @@ class LowCodeSecurityScanner:
             return self.generate_text_report(results)
 
     def generate_html_report(self, results):
-        """Generate HTML security report"""
+        """Generate HTML security report using standards-based generator"""
         structured_results = transform_results_for_professional_report(results)
-        report_generator = ProfessionalReportGenerator()
-        return report_generator.generate_html_content(structured_results)
+        report_generator = StandardsBasedReportGenerator()
+        return report_generator._generate_html_content(structured_results, enhanced=True)
 
     def generate_text_report(self, results):
         """Generate text-based security report"""
